@@ -221,7 +221,7 @@ class StepperMotor():
             The speed to run the motor at, expressed in RPM or RPS. Default is RPS.
         direction : Direction
             The direction given to the stepper motor.
-        is_RPM : bool, default=True
+        is_RPM : bool, default=False
             If True it means that the speed is expressed in RPM (revolutions-per-minute),
             while if False it means that the speed is expressed in RPS (revolutions-per-second).
         '''
