@@ -18,8 +18,6 @@ class Direction():
         '''
         return self._value
 
-UP = Direction(1)
-DOWN = Direction(0)
 CCW = Direction(1)
 CW = Direction(0)
 
@@ -213,14 +211,14 @@ class StepperMotor():
 
         return
 
-    def run(self, speed:float, direction:Direction, is_RPM:bool = True):
+    def run(self, speed:float, direction:Direction, is_RPM:bool = False):
         '''
         Run the stepper motor at the specified speed and in the given direction.
 
         Parameters
         ----------
         speed : float
-            The speed to run the motor at, expressed in RPM or RPS. Default is RPM.
+            The speed to run the motor at, expressed in RPM or RPS. Default is RPS.
         direction : Direction
             The direction given to the stepper motor.
         is_RPM : bool, default=True
