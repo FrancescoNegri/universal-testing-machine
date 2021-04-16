@@ -204,11 +204,11 @@ class StepperMotor():
         mode : Mode
             The motor mode to use.
         '''
-        self._mode = mode.get_values()
+        self._mode = mode
 
         for pin in self._mode_pins:
             idx = self._mode_pins.index(pin)
-            self._pi.write(pin, self._mode[idx])
+            self._pi.write(pin, self._mode.get_values()[idx])
             # print('Pin {} = {}'.format(pin, self._mode[idx]))
 
         return
@@ -250,7 +250,9 @@ class StepperMotor():
         '''
         # Turn off the PWM
         self._pi.hardware_PWM(self._step_pin, 0, 0)
+        sleep(0.05)
         
         # Disable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 1)
+        sleep(0.05)
         return
