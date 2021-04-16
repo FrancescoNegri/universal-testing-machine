@@ -220,7 +220,7 @@ class StepperMotor():
         Parameters
         ----------
         speed : float
-            The speed to run the motor at, expressed in RPM or RPS.
+            The speed to run the motor at, expressed in RPM or RPS. Default is RPM.
         direction : Direction
             The direction given to the stepper motor.
         is_RPM : bool, default=True
