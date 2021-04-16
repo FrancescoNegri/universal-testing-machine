@@ -2,8 +2,6 @@ import os
 import pigpio
 from time import sleep
 
-from utils import get_PWMfreq_from_RPM, get_PWMfreq_from_RPS
-
 class Direction():
     def __init__(self, value:bool):
         '''
@@ -26,12 +24,14 @@ CCW = Direction(1)
 CW = Direction(0)
 
 class Mode():
-    def __init__(self, M0:bool, M1:bool, M2:bool):
+    def __init__(self, microstep_size:float, M0:bool, M1:bool, M2:bool):
         '''
         Class for motor running mode.
 
         Parameters
         ----------
+        microstep_size : float
+            Microstep size for the specified mode with respect to a full step.
         M0 : bool
             Value for the M0 pin.
         M1 : bool
@@ -42,19 +42,27 @@ class Mode():
         self._M0 = M0
         self._M1 = M1
         self._M2 = M2
+        self._microstep_size = microstep_size
+
     def get_values(self):
         '''
         Return a tuple representing the values for each
         mode pin.
         '''
         return (self._M0, self._M1, self._M2)
+
+    def get_microstep_size(self):
+        '''
+        Return the microstep size for this mode.
+        '''
+        return self._microstep_size
     
-FULL = Mode(0, 0, 0)
-HALF = Mode(1, 0, 0)
-ONE_FOUR = Mode(0, 1, 0)
-ONE_EIGHT = Mode(1, 1, 0)
-ONE_SIXTEEN = Mode(0, 0, 1)
-ONE_THIRTYTWO = Mode(1, 0, 1)
+FULL = Mode(1, 0, 0, 0)
+HALF = Mode(1/2, 1, 0, 0)
+ONE_FOUR = Mode(1/4, 0, 1, 0)
+ONE_EIGHT = Mode(1/8, 1, 1, 0)
+ONE_SIXTEEN = Mode(1/16, 0, 0, 1)
+ONE_THIRTYTWO = Mode(1/32, 1, 0, 1)
 
 class StepperMotor():
 
@@ -85,6 +93,7 @@ class StepperMotor():
         self._step_pin = step_pin
         self._en_pin = en_pin
         self._mode_pins = mode_pins
+        self._mode = mode
 
         try:
             os.system("sudo pigpiod")
@@ -105,6 +114,87 @@ class StepperMotor():
         # Set the given mode
         self.set_mode(mode)
         
+    def _get_RPS_from_RPM(self, RPM:float):
+        ''' 
+        Return the RPS (revolutions-per-second)
+        given the RPM (revolutions-per-minute).
+
+        Parameters
+        ----------
+        RPM : float
+            The amount of RPM to convert.
+
+        Returns
+        -------
+        RPS : float
+            The amount of RPS computed.
+        '''
+        RPS = RPM / 60
+        return RPS
+
+    def _get_RPM_from_RPS(self, RPS:float):
+        ''' 
+        Return the RPM (revolutions-per-minute)
+        given the RPS (revolutions-per-seconds).
+
+        Parameters
+        ----------
+        RPS : float
+            The amount of RPS to convert.
+
+        Returns
+        -------
+        RPM : float
+            The amount of RPM computed.
+        '''
+        RPM = RPS * 60
+        return RPM
+
+    def _get_PWMfreq_from_RPM(self, RPM:float):
+        ''' 
+        Return the PWM frequency needed to
+        rotate at the given RPM (revolutions-per-minute).
+        The PWM frequency is then rounded to an integer.
+
+        Parameters
+        ----------
+        RPM : float
+            The amount of RPM to rotate at.
+
+        Returns
+        -------
+        PWMfreq : int
+            The PWM frequency computed.
+        '''
+
+        RPS = self._get_RPS_from_RPM(RPM)
+        PWMfreq = self._get_PWMfreq_from_RPS(RPS)
+        return PWMfreq
+
+    def _get_PWMfreq_from_RPS(self, RPS:float):
+        ''' 
+        Return the PWM frequency needed to
+        rotate at the given RPS (revolutions-per-second).
+        The PWM frequency is then rounded to an integer.
+
+        Parameters
+        ----------
+        RPS : float
+            The amount of RPS to rotate at.
+
+        Returns
+        -------
+        PWMfreq : int
+            The PWM frequency computed.
+        '''
+
+        PWMfreq_revolution = self._total_steps / self._mode.get_microstep_size()
+
+        # 1 rps : PWMfreq_revolution = RPS : PWMfreq
+        PWMfreq = RPS * PWMfreq_revolution
+        PWMfreq = round(PWMfreq)
+        return PWMfreq
+
     def set_mode(self, mode:Mode):
         '''
         Set the employed motor mode.
@@ -147,9 +237,9 @@ class StepperMotor():
 
         # Set duty cycle and frequency
         if is_RPM:
-            PWMfreq = get_PWMfreq_from_RPM(speed)
+            PWMfreq = self._get_PWMfreq_from_RPM(speed)
         else:
-            PWMfreq = get_PWMfreq_from_RPS(speed)
+            PWMfreq = self._get_PWMfreq_from_RPS(speed)
 
         self._pi.hardware_PWM(self._step_pin, PWMfreq, 500000) # 2000Hz 50% dutycycle
         return
