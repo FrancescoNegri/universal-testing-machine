@@ -209,7 +209,7 @@ class StepperMotor():
         for pin in self._mode_pins:
             idx = self._mode_pins.index(pin)
             self._pi.write(pin, self._mode.get_values()[idx])
-            # print('Pin {} = {}'.format(pin, self._mode[idx]))
+            # print('Pin {} = {}'.format(pin, self._mode.get_values()[idx]))
 
         return
 
