@@ -1,6 +1,6 @@
 import os
+import time
 import pigpio
-from time import sleep
 
 class Direction():
     def __init__(self, value:bool):
@@ -92,11 +92,12 @@ class StepperMotor():
         self._en_pin = en_pin
         self._mode_pins = mode_pins
         self._mode = mode
+        self._start_at = None
 
         try:
             os.system("sudo pigpiod")
         finally:
-            sleep(1)
+            time.sleep(1)
         
         # Connect to pigpio daemon
         self._pi = pigpio.pi()
@@ -211,9 +212,9 @@ class StepperMotor():
 
         return
 
-    def run(self, speed:float, direction:Direction, is_RPM:bool = False):
+    def start(self, speed:float, direction:Direction, is_RPM:bool = False):
         '''
-        Run the stepper motor at the specified speed and in the given direction.
+        Start the stepper motor at the specified speed and in the given direction.
 
         Parameters
         ----------
@@ -227,11 +228,11 @@ class StepperMotor():
         '''
         # Enable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 0)
-        sleep(0.05)
+        time.sleep(0.05)
         
         # Set the stepper motor direction
         self._pi.write(self._dir_pin, direction.get_value())  # Set direction. 0 DOWN, 1 UP
-        sleep(0.05)
+        time.sleep(0.05)
 
         # Set duty cycle and frequency
         if is_RPM:
@@ -240,18 +241,35 @@ class StepperMotor():
             PWMfreq = self._get_PWMfreq_from_RPS(speed)
 
         self._pi.hardware_PWM(self._step_pin, PWMfreq, 500000) # 2000Hz 50% dutycycle
+        
+        # Set start time
+        self._start_at = time.time()
+
         return
 
     def stop(self):
         '''
-        Stop the stepper motor.
+        Stop the stepper motor. 
+        
+        Return
+        ------
+        running_time : float | None
+            The amount of time the motor has been running in seconds.
+            If the motor is not running, None is returned.
         '''
         # Turn off the PWM
         self._pi.hardware_PWM(self._step_pin, 0, 0)
-        sleep(0.05)
+        
+        # Get running time
+        running_time = self.get_running_time()
+        self._start_at = None
         
         # Disable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 1)
+        time.sleep(0.05)
+
+        return running_time
+
     def get_running_time(self):
         '''
         Get the amount of time the motor has been running.
