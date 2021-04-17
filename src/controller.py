@@ -20,6 +20,8 @@ class LinearController():
         self._running_timer = None
         self._rotational_speed = None
 
+        return
+
     def _get_interval_from_distance(self, speed:float, distance:float, is_linear:bool=True):
         '''
         Compute the required time interval to travel to the
@@ -121,14 +123,16 @@ class LinearController():
     
     def abort(self):
         if self.is_running:
-            print('Aborted')
+            # Stop running timer
             self._running_timer.cancel()
-            run_time, run_distance = self._stop()
+
+            # Stop the current run
+            run_interval, run_distance = self._stop()
         else:
-            run_time = None
+            run_interval = None
             run_distance = None
 
-        return run_time, run_distance
+        return run_interval, run_distance
     
     def run(self, speed:float, distance:float, direction:bool, is_linear:bool=True):  
         if not self.is_running:
@@ -166,10 +170,10 @@ class LinearController():
     
     def _stop(self):
         # Stop the motor
-        run_time = self._motor.stop()
-        run_distance = self._get_distance_from_interval(self._rotational_speed, run_time, False)
+        run_interval = self._motor.stop()
+        run_distance = self._get_distance_from_interval(self._rotational_speed, run_interval, is_linear=False)
 
         # Reset running attributes
         self._reset_running_attributes()
 
-        return run_time, run_distance
+        return run_interval, run_distance

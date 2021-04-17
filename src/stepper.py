@@ -253,8 +253,8 @@ class StepperMotor():
         
         Return
         ------
-        run_time : float | None
-            The amount of time the motor has been running
+        run_interval : float | None
+            The time interval the motor has been running
             in seconds until it was stopped.
             If the motor was not running, None is returned.
         '''
@@ -262,27 +262,27 @@ class StepperMotor():
         self._pi.hardware_PWM(self._step_pin, 0, 0)
         
         # Get running time
-        run_time = self.get_running_time()
+        run_interval = self.get_running_interval()
         self._start_at = None
         
         # Disable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 1)
         time.sleep(0.05)
 
-        return run_time
+        return run_interval
 
-    def get_running_time(self):
+    def get_running_interval(self):
         '''
-        Get the amount of time the motor has been running.
+        Get the time interval the motor has been running.
 
         Return
         ------
-        running_time : float | None
-            The amount of time the motor has been running in seconds.
+        running_interval : float | None
+            The time interval the motor has been running in seconds.
             If the motor is not running, None is returned.
         '''
         if self._start_at is not None:
-            running_time = time.time() - self._start_at
+            running_interval = time.time() - self._start_at
         else:
-            running_time = None
-        return running_time
+            running_interval = None
+        return running_interval
