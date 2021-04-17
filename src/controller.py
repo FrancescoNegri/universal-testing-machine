@@ -84,11 +84,12 @@ class LinearController():
         if self.is_running:
             print('Aborted')
             self._running_timer.cancel()
-            running_time = self._stop()
+            run_time, run_distance = self._stop()
         else:
-            running_time = None
+            run_time = None
+            run_distance = None
 
-        return running_time
+        return run_time, run_distance
     
     def run(self, speed:float, distance:float, direction:bool, is_linear:bool=True):  
         if not self.is_running:
@@ -124,12 +125,10 @@ class LinearController():
     
     def _stop(self):
         # Stop the motor
-        running_time = self._motor.stop()
-
-        # Switch off is_running flag
-        self.is_running = False
+        run_time = self._motor.stop()
+        run_distance = self._get_distance_from_interval(self._rotational_speed, run_time, False)
 
         # Delete running timer
         self._running_timer = None
 
-        return running_time
+        return run_time, run_distance
