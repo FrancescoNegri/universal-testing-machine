@@ -9,8 +9,16 @@ class LinearController():
     def __init__(self, motor:stepper.StepperMotor, screw_pitch:float):
         self._motor = motor
         self._screw_pitch = screw_pitch
+
+        # Running attributes
         self.is_running = False
         self._running_timer = None
+        self._rotational_speed = None        
+
+    def _reset_running_attributes(self):
+        self.is_running = False
+        self._running_timer = None
+        self._rotational_speed = None
 
     def _get_interval_from_distance(self, speed:float, distance:float, is_linear:bool=True):
         '''
@@ -41,6 +49,37 @@ class LinearController():
             interval = distance/self._get_linear_speed(speed)
 
         return interval
+
+    def _get_distance_from_interval(self, speed:float, interval:float, is_linear:bool=True):
+        '''
+        Compute the travelled distance for a specified
+        time interval, given a desired speed.
+
+        Parameters
+        ----------
+        speed : float
+            The desired speed for the motion. It can be
+            specified either in mm/s (linear) and
+            RPS (rotational). Default is linear.
+        interval : float
+            The specified time interval, expressed in seconds.
+        is_linear : bool, default=True
+            If True the speed is to be given in mm/s (linear),
+            if False the speed is expected to be in RPS (rotational).
+
+        Return
+        ------
+        distance : float
+            The computed travelled distance in the specified
+            time interval considering the desired speed, given
+            in mm.
+        '''
+        if is_linear:
+            distance = interval * speed
+        else:
+            distance = interval * self._get_linear_speed(speed)
+
+        return distance
 
     def _get_rotational_speed(self, linear_speed:float):
         '''
@@ -111,13 +150,15 @@ class LinearController():
             # Start the timer
             self._running_timer.start()
 
-            # Switch on is_running flag
+            # Set running attributes
             self.is_running = True
+            self._rotational_speed = speed
         else:
             print('The motor is already running')
             interval = None
+            distance = None
         
-        return interval
+        return interval, distance
 
     def run_to(self):
         # run to a specified absolute point
@@ -128,7 +169,7 @@ class LinearController():
         run_time = self._motor.stop()
         run_distance = self._get_distance_from_interval(self._rotational_speed, run_time, False)
 
-        # Delete running timer
-        self._running_timer = None
+        # Reset running attributes
+        self._reset_running_attributes()
 
         return run_time, run_distance
