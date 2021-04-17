@@ -252,5 +252,18 @@ class StepperMotor():
         
         # Disable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 1)
-        sleep(0.05)
-        return
+    def get_running_time(self):
+        '''
+        Get the amount of time the motor has been running.
+
+        Return
+        ------
+        running_time : float | None
+            The amount of time the motor has been running in seconds.
+            If the motor is not running, None is returned.
+        '''
+        if self._start_at is not None:
+            running_time = time.time() - self._start_at
+        else:
+            running_time = None
+        return running_time
