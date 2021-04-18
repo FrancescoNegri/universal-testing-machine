@@ -3,10 +3,11 @@ import time
 import pigpio
 
 class Direction():
+    '''
+        Class representing the motor direction.
+    '''
     def __init__(self, value:bool):
         '''
-        Class for motor direction.
-
         Parameters
         ----------
         value: bool
@@ -22,10 +23,11 @@ CCW = Direction(1)
 CW = Direction(0)
 
 class Mode():
+    '''
+    Class representing a motor running mode.
+    '''
     def __init__(self, microstep_size:float, M0:bool, M1:bool, M2:bool):
         '''
-        Class for motor running mode.
-
         Parameters
         ----------
         microstep_size : float
@@ -63,14 +65,15 @@ ONE_SIXTEEN = Mode(1/16, 0, 0, 1)
 ONE_THIRTYTWO = Mode(1/32, 1, 0, 1)
 
 class StepperMotor():
+    '''
+    Class representing a stepper motor.
+
+    This class specifies an interface to control stepper motors
+    through PWM technique.
+    '''
 
     def __init__(self, total_steps:int, dir_pin:int, step_pin:int, en_pin:int, mode_pins:tuple, mode:Mode=FULL):
         '''
-        Class for stepper motors.
-
-        This class specifies an interface to control stepper motors
-        through PWM technique.
-
         Parameters
         ----------
         total_steps : int
