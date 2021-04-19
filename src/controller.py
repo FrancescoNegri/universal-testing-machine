@@ -246,9 +246,11 @@ class LinearController():
                 max_distance = 130
                 timeout = self._get_interval_from_distance(speed, max_distance, is_linear)
             
-            self.is_calibrated = selected_endstop.wait_for_active(timeout)
+            has_reached_endstop = selected_endstop.wait_for_active(timeout)
 
             self.motor_stop()
+
+            self.is_calibrated = has_reached_endstop
 
             if self.is_calibrated:
                 self.absolute_position = 0
