@@ -6,7 +6,19 @@ DOWN = stepper.CW
 
 
 class LinearController():
+    '''
+    Class controlling a stepper motor (rotational) from a linear point of view.
+    '''
     def __init__(self, motor:stepper.StepperMotor, screw_pitch:float):
+        '''
+        Parameters
+        ----------
+        motor : StepperMotor
+            The stepper motor to control.
+        screw_pitch : float
+            The pitch of the screw employed to convert the rotational
+            motion of the motor to a linear one, specified in mm.
+        '''
         self._motor = motor
         self._screw_pitch = screw_pitch
 
@@ -16,6 +28,10 @@ class LinearController():
         self._rotational_speed = None        
 
     def _reset_running_attributes(self):
+        '''
+        Reset the running attributes to their default
+        values after each run.
+        '''
         self.is_running = False
         self._running_timer = None
         self._rotational_speed = None
@@ -45,10 +61,13 @@ class LinearController():
             The computed time interval to travel the given
             distance at the desired speed, given in seconds.
         '''
-        if is_linear:
-            interval = distance/speed
+        if distance is not None:
+            if is_linear:
+                interval = distance/speed
+            else:
+                interval = distance/self._get_linear_speed(speed)
         else:
-            interval = distance/self._get_linear_speed(speed)
+            interval = None
 
         return interval
 
@@ -76,10 +95,13 @@ class LinearController():
             time interval considering the desired speed, given
             in mm.
         '''
-        if is_linear:
-            distance = interval * speed
+        if interval is not None:
+            if is_linear:
+                distance = interval * speed
+            else:
+                distance = interval * self._get_linear_speed(speed)
         else:
-            distance = interval * self._get_linear_speed(speed)
+            distance = None
 
         return distance
 
@@ -122,6 +144,18 @@ class LinearController():
         return linear_speed
     
     def abort(self):
+        '''
+        Stop the running motor before it has completed a previously specified task.
+
+        Returns
+        -------
+        run_interval : float
+            The time interval the motor has been running for before being
+            aborted, given in seconds.
+        run_distance : float
+            The distance travelled by the motor before being aborted,
+            given in mm.
+        '''
         if self.is_running:
             # Stop running timer
             self._running_timer.cancel()
@@ -134,7 +168,41 @@ class LinearController():
 
         return run_interval, run_distance
     
-    def run(self, speed:float, distance:float, direction:bool, is_linear:bool=True):  
+    def run(self, speed:float, distance:float, direction:stepper.Direction, is_linear:bool=True):
+        '''
+        Run the motor for a specified task
+        (speed, distance, and direction).
+        The motor is automatically stopped once
+        the task is completed.
+        If the motor is already running, nothing happens.
+
+        Parameters
+        ----------
+        speed : float
+            The speed to run the motor at.
+            It can be expressed in mm/s (linear)
+            or RPS (rotational).
+            Default is in mm/s (linear).
+        distance : float
+            The distance to travel to,
+            given in mm.
+        direction : Direction
+            The direction to travel to.
+        is_linear : bool, default=True
+            If True it means that the speed is given
+            in mm (linear), while if False it means that
+            it is given in RPS (rotational).
+
+        Returns
+        -------
+            interval : float
+                The expected time interval to reach
+                the specified destination at the
+                desired speed, given in seconds.
+            distance : float
+                The distance to reach the specified
+                destination, given in mm.
+        '''
         if not self.is_running:
             # Compute the run time interval
             interval = self._get_interval_from_distance(speed, distance, is_linear)
@@ -169,6 +237,18 @@ class LinearController():
         return
     
     def _stop(self):
+        '''
+        Stop the running motor.
+
+        Returns
+        -------
+        run_interval : float
+            The time interval the motor has been running for,
+            given in seconds.
+        run_distance : float
+            The distance travelled by the motor,
+            given in mm.
+        '''
         # Stop the motor
         run_interval = self._motor.stop()
         run_distance = self._get_distance_from_interval(self._rotational_speed, run_interval, is_linear=False)
