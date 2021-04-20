@@ -1,4 +1,4 @@
-from statistics import mean
+from statistics import mean, median
 import time
 import RPi.GPIO as GPIO
 from hx711 import HX711
@@ -59,8 +59,10 @@ class LoadCell():
         return self.is_calibrated
 
     def _reset_reading_attributes(self):
-        self._readings = None
         self._is_reading = False
+        time.sleep(0.01)
+
+        self._readings = None
         self._read_thread = None
         self._batch_index = 0
 
@@ -86,13 +88,13 @@ class LoadCell():
 
         return
 
-    def stop_reading(self):
+    def stop_reading(self):        
+        n_readings = len(self._readings)
         self._reset_reading_attributes()
 
-        return
+        return n_readings
 
     def _read(self, frequency : int = 80):
-        print(f'Sampling frequency: {frequency}')
         cycle_start_time = time.time()
         cycle_period = 1 / frequency
         cycle_delay = 0
@@ -103,7 +105,9 @@ class LoadCell():
             elapsed_time = current_time - cycle_start_time
 
             if elapsed_time >= cycle_period - cycle_delay:
-                reading = self._hx711._read()
+                reading = False
+                while reading is False:
+                    reading = self._hx711._read()
                 self._readings.append(reading)
                 cycle_start_time = time.time()
                 cycle_delay = cycle_start_time - current_time
@@ -117,8 +121,16 @@ class LoadCell():
     def get_measurement(self, batch_size : int = 5, kernel_size : int = 5):
         batch = self._readings[self._batch_index:self._batch_index + batch_size]
         self._batch_index += batch_size
-
+        
+        batch_median = median(batch)
+        reading_tolerance = 0.2 # 20%
+        for i in range(len(batch)):
+            reading = batch[i]
+            if reading > batch_median * (1 + reading_tolerance) or reading < batch_median * (1 - reading_tolerance):
+                batch[i] = batch_median
+        
         batch = scipy.signal.medfilt(batch, kernel_size)
+
         for i in range(len(batch)):
             batch[i] = self._slope * batch[i] + self._y_intercept
 
