@@ -39,11 +39,11 @@ if __name__ == '__main__':
     button_up.hold_time =0.1
     button_down.hold_time =0.1
 
-    button_up.when_held = lambda: motor.start(1, controller.UP)
-    button_up.when_released = lambda: motor.stop()
+    button_up.when_held = lambda: control.motor_start(5, controller.UP)
+    button_up.when_released = lambda: control.motor_stop()
 
-    button_up.when_held = lambda: motor.start(1, controller.DOWN)
-    button_up.when_released = lambda: motor.stop()
+    button_up.when_held = lambda: control.motor_start(5, controller.DOWN)
+    button_up.when_released = lambda: control.motor_stop()
 
     while mode == 0:
         pass

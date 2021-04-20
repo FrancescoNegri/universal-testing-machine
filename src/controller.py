@@ -27,26 +27,16 @@ class LinearController():
         self.is_calibrated = False
         self.absolute_position = None
         self._calibration_direction = None
-        self._endstop_up = Button(pin_end_up)
-        self._endstop_down = Button(pin_end_down)
 
         # Running attributes
         self.is_running = False
         self._running_direction = None
         self._running_timer = None
-        self._rotational_speed = None        
+        self._rotational_speed = None     
 
-    def _reset_running_attributes(self):
-        '''
-        Reset the running attributes to their default
-        values after each run.
-        '''
-        self.is_running = False
-        self._running_direction = None
-        self._running_timer = None
-        self._rotational_speed = None
-
-        return
+        # Other
+        self._endstop_up = Button(pin_end_up)
+        self._endstop_down = Button(pin_end_down)   
 
     def _get_interval_from_distance(self, speed:float, distance:float, is_linear:bool=True):
         '''
@@ -153,6 +143,68 @@ class LinearController():
         linear_speed = rotational_speed * self._screw_pitch
         return linear_speed
     
+    def _reset_running_attributes(self):
+        '''
+        Reset the running attributes to their default
+        values after each run.
+        '''
+        self.is_running = False
+        self._running_direction = None
+        self._running_timer = None
+        self._rotational_speed = None
+
+        return
+
+    def _stop(self):
+        '''
+        Stop the running motor.
+
+        Returns
+        -------
+        run_interval : float
+            The time interval the motor has been running for,
+            given in seconds.
+        run_distance : float
+            The distance travelled by the motor,
+            given in mm.
+        '''
+        if self.is_running:
+            # Stop the motor
+            run_interval = self._motor.stop()
+            run_distance = self._get_distance_from_interval(self._rotational_speed, run_interval, is_linear=False)
+
+            if self.is_calibrated:
+                self._update_absolute_position(run_distance)
+
+            # Reset running attributes
+            self._reset_running_attributes()
+        else:
+            run_interval = None
+            run_distance = None
+
+        return run_interval, run_distance
+    
+    def _update_absolute_position(self, run_distance:float):
+        # if self._running_direction.get_value() == UP.get_value():
+        #     if self._calibration_direction.get_value() == UP.get_value():
+        #         self.absolute_position -= run_distance
+
+        #     elif self._calibration_direction.get_value() == DOWN.get_value():
+        #         self.absolute_position += run_distance
+
+        # elif self._running_direction.get_value() == DOWN.get_value():
+        #     if self._calibration_direction.get_value() == UP.get_value():
+        #         self.absolute_position += run_distance
+
+        #     elif self._calibration_direction.get_value() == DOWN.get_value():
+        #         self.absolute_position -= run_distance
+
+        if self._running_direction.get_value() is self._calibration_direction.get_value():
+            self.absolute_position -= run_distance
+        elif self._running_direction.get_value() is not self._calibration_direction.get_value():
+            self.absolute_position += run_distance
+        return
+    
     def abort(self):
         '''
         Stop the running motor before it has completed a previously specified task.
@@ -182,13 +234,7 @@ class LinearController():
         self.is_calibrated = False
         
         if not self.is_running:
-            self.is_running = True
-            self._running_direction = direction
-
-            if is_linear:
-                speed = self._get_rotational_speed(speed)
-
-            self._motor.start(speed, direction)
+            self.motor_start(speed, direction, is_linear)
 
             if direction.get_value() == UP.get_value():
                 selected_endstop = self._endstop_up
@@ -196,13 +242,13 @@ class LinearController():
                 selected_endstop = self._endstop_down
             
             timeout = None
-            if calibration_timeout:
+            if calibration_timeout is True:
                 max_distance = 130
-                timeout = self._get_interval_from_distance(speed, max_distance, False)
+                timeout = self._get_interval_from_distance(speed, max_distance, is_linear)
+            
             self.is_calibrated = selected_endstop.wait_for_active(timeout)
 
-            self._motor.stop()
-            self._reset_running_attributes()
+            self.motor_stop()
 
             if self.is_calibrated:
                 self.absolute_position = 0
@@ -211,6 +257,23 @@ class LinearController():
             self.is_calibrated = False
 
         return self.is_calibrated
+    
+    def motor_start(self, speed:float, direction:stepper.Direction = DOWN, is_linear:bool=True):
+        if not self.is_running:
+            if is_linear:
+                speed = self._get_rotational_speed(speed)
+
+            self._motor.start(speed, direction)
+
+            self.is_running = True
+            self._running_direction = direction
+            self._rotational_speed = speed
+            
+        return
+    
+    def motor_stop(self):
+        run_interval, run_distance = self._stop()
+        return run_interval, run_distance
     
     def run(self, speed:float, distance:float, direction:stepper.Direction, is_linear:bool=True):
         '''
@@ -280,37 +343,3 @@ class LinearController():
     def run_to(self):
         # run to a specified absolute point
         return
-    
-    def _stop(self):
-        '''
-        Stop the running motor.
-
-        Returns
-        -------
-        run_interval : float
-            The time interval the motor has been running for,
-            given in seconds.
-        run_distance : float
-            The distance travelled by the motor,
-            given in mm.
-        '''
-        # Stop the motor
-        run_interval = self._motor.stop()
-        run_distance = self._get_distance_from_interval(self._rotational_speed, run_interval, is_linear=False)
-
-        if self.is_calibrated:
-            if self._running_direction.get_value() == UP.get_value():
-                if self._calibration_direction.get_value() == UP.get_value():
-                    self.absolute_position -= run_distance
-                elif self._calibration_direction.get_value() == DOWN.get_value():
-                    self.absolute_position += run_distance
-            elif self._running_direction.get_value() == DOWN.get_value():
-                if self._calibration_direction.get_value() == UP.get_value():
-                    self.absolute_position += run_distance
-                elif self._calibration_direction.get_value() == DOWN.get_value():
-                    self.absolute_position -= run_distance
-
-        # Reset running attributes
-        self._reset_running_attributes()
-
-        return run_interval, run_distance, self.absolute_position
