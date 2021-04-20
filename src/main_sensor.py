@@ -13,7 +13,7 @@ fig = plt.figure()
 ax2=plt.axes()
 line, = ax2.plot([], lw=3)
 text = ax2.text(0.8,0.5, "")
-ax2.set_xlim(0, 10+2)
+ax2.set_xlim(0, 18+2)
 ax2.set_ylim([0, 350])
 fig.canvas.draw()   # note that the first draw comes before setting data
 
@@ -28,14 +28,20 @@ line.set_data(timing,load)
 lc.start_reading()
 
 i = 0
-while i < 800:
+while i < 100:
     if lc.is_ready():
-        batch, batch_index = lc.get_measurement()
-        load.append(batch)
-        timing.append(np.arange(batch_index, batch_index+5, 1)*1/80)
-        line.set_data(timing, load)
         i += 1
+        print('\n')
         print(i)
+        batch, batch_index = lc.get_measurement()
+        time_labels = np.arange(batch_index, batch_index+5, 1)*1/80
+        load.extend(batch)
+        timing.extend(time_labels)
+        
+        line.set_data(timing, load)
+        
+        print(batch)
+        print(time_labels)
 
         # restore background
         fig.canvas.restore_region(ax2background)
@@ -52,9 +58,9 @@ while i < 800:
         # however, I did not observe that.
         fig.canvas.flush_events()
 
-lc.stop_reading()
+n_readings = lc.stop_reading()
 print(f'plotted data: {len(load)}')
-print(f'sensor data: {len(lc._readings)}')
+print(f'sensor data: {n_readings}')
 
 
 GPIO.cleanup()
