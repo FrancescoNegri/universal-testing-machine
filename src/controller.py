@@ -1,5 +1,6 @@
 import stepper
 from threading import Timer
+from gpiozero import Button
 
 UP = stepper.CCW
 DOWN = stepper.CW
@@ -9,7 +10,7 @@ class LinearController():
     '''
     Class controlling a stepper motor (rotational) from a linear point of view.
     '''
-    def __init__(self, motor:stepper.StepperMotor, screw_pitch:float):
+    def __init__(self, motor:stepper.StepperMotor, screw_pitch:float, pin_end_up:int, pin_end_down:int):
         '''
         Parameters
         ----------
@@ -22,8 +23,16 @@ class LinearController():
         self._motor = motor
         self._screw_pitch = screw_pitch
 
+        # Calibration & Position attributes
+        self.is_calibrated = False
+        self.absolute_position = None
+        self._calibration_direction = None
+        self._endstop_up = Button(pin_end_up)
+        self._endstop_down = Button(pin_end_down)
+
         # Running attributes
         self.is_running = False
+        self._running_direction = None
         self._running_timer = None
         self._rotational_speed = None        
 
@@ -33,6 +42,7 @@ class LinearController():
         values after each run.
         '''
         self.is_running = False
+        self._running_direction = None
         self._running_timer = None
         self._rotational_speed = None
 
@@ -168,6 +178,40 @@ class LinearController():
 
         return run_interval, run_distance
     
+    def calibrate(self, speed:float, direction:stepper.Direction = DOWN, is_linear:bool=True, calibration_timeout:bool = True):
+        self.is_calibrated = False
+        
+        if not self.is_running:
+            self.is_running = True
+            self._running_direction = direction
+
+            if is_linear:
+                speed = self._get_rotational_speed(speed)
+
+            self._motor.start(speed, direction)
+
+            if direction.get_value() == UP.get_value():
+                selected_endstop = self._endstop_up
+            elif direction.get_value() == DOWN.get_value():
+                selected_endstop = self._endstop_down
+            
+            timeout = None
+            if calibration_timeout:
+                max_distance = 130
+                timeout = self._get_interval_from_distance(speed, max_distance, False)
+            self.is_calibrated = selected_endstop.wait_for_active(timeout)
+
+            self._motor.stop()
+            self._reset_running_attributes()
+
+            if self.is_calibrated:
+                self.absolute_position = 0
+                self._calibration_direction = direction
+        else:
+            self.is_calibrated = False
+
+        return self.is_calibrated
+    
     def run(self, speed:float, distance:float, direction:stepper.Direction, is_linear:bool=True):
         '''
         Run the motor for a specified task
@@ -224,6 +268,7 @@ class LinearController():
 
             # Set running attributes
             self.is_running = True
+            self._running_direction = direction
             self._rotational_speed = speed
         else:
             print('The motor is already running')
@@ -253,7 +298,19 @@ class LinearController():
         run_interval = self._motor.stop()
         run_distance = self._get_distance_from_interval(self._rotational_speed, run_interval, is_linear=False)
 
+        if self.is_calibrated:
+            if self._running_direction.get_value() == UP.get_value():
+                if self._calibration_direction.get_value() == UP.get_value():
+                    self.absolute_position -= run_distance
+                elif self._calibration_direction.get_value() == DOWN.get_value():
+                    self.absolute_position += run_distance
+            elif self._running_direction.get_value() == DOWN.get_value():
+                if self._calibration_direction.get_value() == UP.get_value():
+                    self.absolute_position += run_distance
+                elif self._calibration_direction.get_value() == DOWN.get_value():
+                    self.absolute_position -= run_distance
+
         # Reset running attributes
         self._reset_running_attributes()
 
-        return run_interval, run_distance
+        return run_interval, run_distance, self.absolute_position
