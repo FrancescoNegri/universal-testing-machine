@@ -97,10 +97,18 @@ class StepperMotor():
         self._mode = mode
         self._start_at = None
 
+        def is_pigpiod_running():
         try:
+                n = int(os.popen('pidof pigpiod').read().splitlines()[0])
+            except:
+                n = 0
+            return bool(n)
+
+        try:
+            if not is_pigpiod_running():
             os.system("sudo pigpiod")
         finally:
-            time.sleep(1)
+            time.sleep(0.5)
         
         # Connect to pigpio daemon
         self._pi = pigpio.pi()
