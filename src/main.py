@@ -95,12 +95,13 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     # my_timer.start()
     
     while mode == 0:
-        if my_load_cell.is_ready():
+        batch_size = 20
+        if my_load_cell.is_ready(batch_size):
             if printed_lines > 1:
                 delete_last_lines(printed_lines - 1)
                 printed_lines -= printed_lines - 1
             
-            batch, _ = my_load_cell.get_measurement()
+            batch, _ = my_load_cell.get_measurement(batch_size)
             print(f'\nMeasured weight: {mean(batch)} g | Absolute position: {my_controller.absolute_position} mm')
             printed_lines += 2
 
