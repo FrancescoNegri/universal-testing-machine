@@ -2,14 +2,12 @@ from statistics import mean
 import sys
 from threading import Timer
 
-from pigpio import SPI_MODE_1
 import stepper
 import controller
 import load_cell
 import time
 import numpy as np
 
-import RPi.GPIO as GPIO
 import matplotlib.pyplot as plt
 
 from gpiozero import Button
@@ -65,7 +63,6 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     mode = 0
 
     button_mode = Button(11)
-    button_mode.hold_time=0.1
 
     def switch_mode():
         nonlocal mode
@@ -74,16 +71,20 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
 
     button_mode.when_released = lambda: switch_mode()
 
-    button_up = Button(27)
-    button_down = Button(17)
-    button_up.hold_time =0.1
-    button_down.hold_time =0.1
+    button_up = Button(17)
+    button_down = Button(27)
 
-    button_up.when_held = lambda: my_controller.motor_start(5, controller.UP)
-    button_up.when_released = lambda: my_controller.motor_stop()
+    def direction_button_released():
+        time.sleep(0.05)
+        my_controller.motor_stop()
 
-    button_up.when_held = lambda: my_controller.motor_start(5, controller.DOWN)
-    button_up.when_released = lambda: my_controller.motor_stop()
+        return
+
+    button_up.when_pressed = lambda: my_controller.motor_start(5, controller.UP)
+    button_up.when_released = lambda: direction_button_released()
+
+    button_down.when_pressed = lambda: my_controller.motor_start(5, controller.DOWN)
+    button_down.when_released = lambda: direction_button_released()
 
     print('Now you are allowed to manually \nmove the crossbar up and down.')
     print('\nWaiting for manual mode to be stopped...')
