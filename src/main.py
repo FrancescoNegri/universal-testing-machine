@@ -39,7 +39,7 @@ def calibrate(my_controller, my_load_cell):
             print('Calibrating the crossbar... Done')
 
         print('Adjusting crossbar position...')
-        my_controller.run(speed=6, distance=25, direction=controller.UP, is_linear=False)
+        my_controller.run(speed=6, distance=55, direction=controller.UP, is_linear=False)
         while my_controller.is_running:
             pass
         delete_last_lines(1)
