@@ -98,7 +98,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
             
             batch, _ = my_load_cell.get_measurement(batch_size)
             force = (mean(batch) / 1000) * 9.81
-            print(f'\nMeasured force: {force} N | Absolute position: {my_controller.absolute_position} mm')
+            print(f'\nMeasured force: {round(force, 3)} N | Absolute position: {round(my_controller.absolute_position, 2)} mm')
             printed_lines += 2
 
     my_load_cell.stop_reading()
