@@ -75,7 +75,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     button_down = Button(27)
 
     def direction_button_released():
-        time.sleep(0.05)
+        time.sleep(0.15)
         my_controller.motor_stop()
 
         return
@@ -103,7 +103,8 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
                 printed_lines -= printed_lines - 1
             
             batch, _ = my_load_cell.get_measurement(batch_size)
-            print(f'\nMeasured weight: {mean(batch)} g | Absolute position: {my_controller.absolute_position} mm')
+            force = (mean(batch) / 1000) * 9.81
+            print(f'\nMeasured force: {force} N | Absolute position: {my_controller.absolute_position} mm')
             printed_lines += 2
 
     my_load_cell.stop_reading()
@@ -145,22 +146,26 @@ def setup_test():
 
     end_section()
 
+    cross_section = float(cross_section)
+    displacement = float(displacement)
+    linear_speed = float(linear_speed)
+
     setup = {
         'CROSS SECTION': {
-            'value': float(cross_section),
+            'value': cross_section,
             'unit': 'mm²'
         },
         'DISPLACEMENT': {
-            'value': float(displacement),
+            'value': displacement,
             'unit': 'mm'
         },
         'SPEED': {
-            'value': float(linear_speed),
+            'value': linear_speed,
             'unit': 'mm/s'
         }
     }
 
-    return setup
+    return setup, cross_section, displacement, linear_speed
 
 def check_test_setup(setup:dict):
     start_section('CHECK TEST PARAMETERS')
@@ -185,9 +190,11 @@ if __name__ == '__main__':
 
     calibrate(control, lc)
     execute_manual_mode(control, lc)
-    setup = setup_test()
+    setup, cross_section, displacement, linear_speed = setup_test()
     check_test_setup(setup)
     
+    clamps_init_distance = 21.5
+    gauge_length = control.absolute_position + clamps_init_distance
 
     # fig = plt.figure()
     # ax2=plt.axes()
