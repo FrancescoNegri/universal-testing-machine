@@ -74,12 +74,6 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     button_up = Button(17)
     button_down = Button(27)
 
-    def direction_button_released():
-        time.sleep(0.15)
-        my_controller.motor_stop()
-
-        return
-
     button_up.when_pressed = lambda: my_controller.motor_start(5, controller.UP)
     button_up.when_released = lambda: direction_button_released()
 
