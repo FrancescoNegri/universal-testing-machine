@@ -62,7 +62,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     
     mode = 0
 
-    button_mode = Button(11)
+    button_mode = Button(7)
 
     def switch_mode():
         nonlocal mode
