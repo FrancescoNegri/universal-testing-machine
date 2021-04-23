@@ -18,6 +18,7 @@ class LoadCell():
 
         # Reading attributes
         self._readings = None
+        self._start_reading_at = None
         self._is_reading = False
         self._read_thread = None
         self._batch_index = 0
@@ -70,6 +71,7 @@ class LoadCell():
         time.sleep(0.01)
 
         self._readings = None
+        self._start_reading_at = None
         self._read_thread = None
         self._batch_index = 0
 
@@ -92,20 +94,21 @@ class LoadCell():
 
         self._read_thread = Thread(target=self._read, args=[frequency])
         self._read_thread.start()
+        self._start_reading_at = time.time()
 
         return
 
     def stop_reading(self):        
         n_readings = len(self._readings)
+        reading_time_interval = time.time() - self._start_reading_at
         self._reset_reading_attributes()
 
-        return n_readings
+        return n_readings, reading_time_interval
 
     def _read(self, frequency : int = 80):
         cycle_start_time = time.time()
         cycle_period = 1 / frequency
         cycle_delay = 0
-        
 
         while self._is_reading is True:
             current_time = time.time()
