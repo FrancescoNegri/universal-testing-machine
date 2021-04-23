@@ -154,7 +154,7 @@ def setup_test():
             'value': float(displacement),
             'unit': 'mm'
         },
-        'SPEED (mm/s)': {
+        'SPEED': {
             'value': float(linear_speed),
             'unit': 'mm/s'
         }
