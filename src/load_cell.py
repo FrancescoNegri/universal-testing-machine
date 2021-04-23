@@ -26,25 +26,32 @@ class LoadCell():
         zero_calibration_raw = None
         mass_calibration_raw = None
 
+        lines_count = 0
+
         res = None
         while res != 'y' or bool(zero_calibration_raw) is False:
             res = input('Zero-mass point calibration. Ready? [y]\n')
+            lines_count += 2
             if res == 'y':
                 zero_calibration_raw = self._get_raw_data_mean(n_readings=100)             
                 if bool(zero_calibration_raw) is False:
                     print('Failed. Retry...')
+                    lines_count += 1
 
         res = None
         while res != 'y' or bool(mass_calibration_raw) is False:
             res = input('Known-mass point calibration. Add the known mass. Ready? [y]\n')
+            lines_count += 2
             if res == 'y':
                 mass_calibration_raw = self._get_raw_data_mean(n_readings=100)               
                 if bool(mass_calibration_raw) is False:
                     print('Failed. Retry...')
+                    lines_count += 1
                 
         if calibrating_mass is None:
             calibrating_mass = input('Enter the known mass used for calibration (in grams): ')
             calibrating_mass = float(calibrating_mass)
+            lines_count += 2
         
         x0 = zero_calibration_raw
         y0 = 0
@@ -56,7 +63,7 @@ class LoadCell():
 
         self.is_calibrated = True
         
-        return self.is_calibrated
+        return self.is_calibrated, lines_count
 
     def _reset_reading_attributes(self):
         self._is_reading = False
