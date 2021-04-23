@@ -91,8 +91,8 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
 
     my_load_cell.start_reading()
 
-    my_timer = Timer(5, switch_mode)
-    my_timer.start()
+    # my_timer = Timer(5, switch_mode)
+    # my_timer.start()
     
     while mode == 0:
         if my_load_cell.is_ready():
