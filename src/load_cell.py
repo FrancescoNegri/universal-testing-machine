@@ -111,7 +111,7 @@ class LoadCell():
             current_time = time.time()
             elapsed_time = current_time - cycle_start_time
 
-            if elapsed_time >= cycle_period - cycle_delay:
+            if elapsed_time >= cycle_period - cycle_delay and self._is_reading is True:
                 reading = False
                 while reading is False:
                     reading = self._hx711._read()
