@@ -323,7 +323,7 @@ class LinearController():
             if is_linear:
                 speed = self._get_rotational_speed(speed)
             
-            print(f'Run for {interval} s at {speed} rps')
+            # print(f'Run for {interval} s at {speed} rps')
 
             # Start the motor
             self._motor.start(speed, direction)
