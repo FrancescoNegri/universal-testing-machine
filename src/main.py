@@ -75,17 +75,17 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     button_down = Button(27)
 
     button_up.when_pressed = lambda: my_controller.motor_start(5, controller.UP)
-    button_up.when_released = lambda: direction_button_released()
+    button_up.when_released = lambda: my_controller.motor_stop()
 
     button_down.when_pressed = lambda: my_controller.motor_start(5, controller.DOWN)
-    button_down.when_released = lambda: direction_button_released()
+    button_down.when_released = lambda: my_controller.motor_stop()
 
     print('Now you are allowed to manually \nmove the crossbar up and down.')
     print('\nWaiting for manual mode to be stopped...')
     printed_lines = 1
 
     my_load_cell.start_reading()
-
+    
     # my_timer = Timer(5, switch_mode)
     # my_timer.start()
     
