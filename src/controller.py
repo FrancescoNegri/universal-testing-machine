@@ -311,6 +311,8 @@ class LinearController():
             distance : float
                 The distance to reach the specified
                 destination, given in mm.
+            started_at : float
+                The time at which the motor is started.
         '''
         if not self.is_running:
             # Compute the run time interval
@@ -326,7 +328,7 @@ class LinearController():
             # print(f'Run for {interval} s at {speed} rps')
 
             # Start the motor
-            self._motor.start(speed, direction)
+            started_at = self._motor.start(speed, direction)
 
             # Start the timer
             self._running_timer.start()
@@ -340,7 +342,7 @@ class LinearController():
             interval = None
             distance = None
         
-        return interval, distance
+        return interval, distance, started_at
 
     def run_to(self):
         # run to a specified absolute point

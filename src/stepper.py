@@ -95,7 +95,7 @@ class StepperMotor():
         self._en_pin = en_pin
         self._mode_pins = mode_pins
         self._mode = mode
-        self._start_at = None
+        self._started_at = None
 
         def is_pigpiod_running():
             try:
@@ -236,6 +236,11 @@ class StepperMotor():
         is_RPM : bool, default=False
             If True it means that the speed is expressed in RPM (revolutions-per-minute),
             while if False it means that the speed is expressed in RPS (revolutions-per-second).
+
+        Returns
+        -------
+        started_at : float
+            The time at which the motor started.
         '''
         # Enable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 0)
@@ -254,9 +259,9 @@ class StepperMotor():
         self._pi.hardware_PWM(self._step_pin, PWMfreq, 500000) # 2000Hz 50% dutycycle
         
         # Set start time
-        self._start_at = time.time()
+        self._started_at = time.time()
 
-        return
+        return self._started_at
 
     def stop(self):
         '''
@@ -274,7 +279,7 @@ class StepperMotor():
         
         # Get running time
         run_interval = self.get_running_interval()
-        self._start_at = None
+        self._started_at = None
         
         # Disable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 1)
@@ -292,8 +297,8 @@ class StepperMotor():
             The time interval the motor has been running in seconds.
             If the motor is not running, None is returned.
         '''
-        if self._start_at is not None:
-            running_interval = time.time() - self._start_at
+        if self._started_at is not None:
+            running_interval = time.time() - self._started_at
         else:
             running_interval = None
         return running_interval
