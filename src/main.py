@@ -1,13 +1,12 @@
 from statistics import mean
 import sys
-from threading import Timer
 
 import stepper
 import controller
 import load_cell
-import time
 import numpy as np
-
+import pandas as pd
+import scipy.signal
 import matplotlib.pyplot as plt
 
 from gpiozero import Button
@@ -89,16 +88,17 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     # my_timer = Timer(5, switch_mode)
     # my_timer.start()
     
+    batch_index = 0
+    batch_size = 20
+
     while mode == 0:
-        batch_size = 20
-        if my_load_cell.is_ready(batch_size):
+        if my_load_cell.is_batch_ready(batch_index, batch_size):
             if printed_lines > 1:
                 delete_last_lines(printed_lines - 1)
                 printed_lines -= printed_lines - 1
             
-            batch, _ = my_load_cell.get_measurement(batch_size)
-            force = (mean(batch) / 1000) * 9.81
-            print(f'\nMeasured force: {round(force, 3)} N | Absolute position: {round(my_controller.absolute_position, 2)} mm')
+            batch, batch_index, _ = my_load_cell.get_batch(batch_index, batch_size)
+            print(f'\nMeasured force: {round(mean(batch), 3)} N | Absolute position: {round(my_controller.absolute_position, 2)} mm')
             printed_lines += 2
 
     my_load_cell.stop_reading()
@@ -178,18 +178,17 @@ def check_test_setup(setup:dict):
     return
 
 def execute_test(my_controller:controller.LinearController, my_load_cell:load_cell.LoadCell, cross_section:float, distance:float, speed:float):
+    # Plot initialization
     fig = plt.figure()
     ax = plt.axes()
     line, = ax.plot([], lw=3)
-    text = ax.text(0.8,0.5, "")
-    
-    time_interval = my_controller._get_interval_from_distance(speed, distance, is_linear=True)
+    text = ax.text(0.8, 0.5, '')
 
     clamps_initial_distance = 21.5
     initial_gauge_length = my_controller.absolute_position + clamps_initial_distance
 
-    ax.set_xlim(0, round(time_interval * 1.1)) # 10% margin
-    ax.set_ylim([0, 350])
+    ax.set_xlim([0, round(((displacement / initial_gauge_length) * 1.1) * 100)]) # 10% margin
+    ax.set_ylim([0, 30])
     fig.canvas.draw()   # note that the first draw comes before setting data
 
     ax_background = fig.canvas.copy_from_bbox(ax.bbox)
@@ -200,23 +199,26 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     strain = []
     line.set_data(strain, stress)
 
-    my_load_cell.start_reading()
-    my_controller.run(speed, distance, controller.UP, is_linear=True)
+    flag = 1
+    
+    _, _, t0 = my_controller.run(speed, distance, controller.UP, is_linear=True)
+    
+    batch_index = 0
 
     while my_controller.is_running:
-        if my_load_cell.is_ready():
-            batch, batch_index = my_load_cell.get_measurement()
-            
-            time_labels = list(np.arange(batch_index, batch_index + 5, 1) * 1/80)
-            
-            forces = [(x / 1000) * 9.81 for x in batch]
-            stresses = [x / cross_section for x in forces]
+        if flag == 1:
+            my_load_cell.start_reading()
+            flag=0
+        if my_load_cell.is_batch_ready(batch_index):
+            batch, batch_index, _ = my_load_cell.get_batch(batch_index)
+            batch['t'] = batch['t'] - t0
 
-            strains = [((x * speed) / initial_gauge_length) * 100 for x in time_labels]
-
+            stresses = batch['F'] / cross_section                           # in N/mm2 = MPa
+            strains = (batch['t'] * speed / initial_gauge_length) * 100     # in percentage 
+            
             stress.extend(stresses)
             strain.extend(strains)
-            
+
             line.set_data(strain, stress)
 
             # restore background
@@ -234,10 +236,26 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
             # however, I did not observe that.
             fig.canvas.flush_events()
 
-    n_readings, reading_time = my_load_cell.stop_reading()
-    print(f'\nData collected for {reading_time} s')
+    data, _ = my_load_cell.stop_reading()
+
+    data['t'] = data['t'] - t0
+
+    data['F_unfiltered'] = data['F']
+    data['stress_unfiltered'] = data['F'] / cross_section                   # in N/mm2 = MPa
+
+    data['F'] = scipy.signal.medfilt(data['F'], 5)
+    data['stress'] = data['F'] / cross_section                              # in N/mm2 = MPa
+
+    data['strain'] = (data['t'] * speed / initial_gauge_length) * 100       # in percentage
+
     print(f'# plotted data: {len(stress)}')
-    print(f'# collected data: {n_readings}')
+    print('# collected data: {}'.format(len(data['stress'])))
+    print(f'# initial gauge length: {initial_gauge_length}')
+    
+    # Save pandas DataFrame as an Excel file
+    data.to_excel('test_data.xlsx', sheet_name='Sheet1', header=False, index=False)
+
+    print('Press Enter to end the test')    
 
     return
 

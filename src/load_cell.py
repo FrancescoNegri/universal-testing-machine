@@ -1,81 +1,101 @@
 from statistics import mean, median
 import time
+
+from pandas.core.construction import array
 import RPi.GPIO as GPIO
 from hx711 import HX711
 import scipy
 import scipy.signal
 from threading import Thread
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 class LoadCell():
-    def __init__(self, dat_pin : int, clk_pin : int):
+    def __init__(self, dat_pin:int, clk_pin:int):
 
         GPIO.setmode(GPIO.BCM)
         self._hx711 = HX711(dout_pin=dat_pin, pd_sck_pin=clk_pin)
+        
+        # Calibration attributes
         self.is_calibrated = False
         self._slope = None
         self._y_intercept = None
         self._tare_weight = 0
 
         # Reading attributes
-        self._readings = None
-        self._start_reading_at = None
         self._is_reading = False
+        self._readings = None
+        self._timings = None
+        self._started_reading_at = None
         self._read_thread = None
-        self._batch_index = 0
+
+    def _reset_reading_attributes(self):
+        self._is_reading = False
+        self._readings = None
+        self._timings = None
+        self._started_reading_at = None
+        self._read_thread = None
+
+        return
     
-    def calibrate(self, calibrating_mass : float = None):
+    def _init_reading_attributes(self):
+        self._readings = []
+        self._timings = []
+        self._is_reading = True
+
+        self._read_thread = Thread(target=self._read)
+        self._started_reading_at = time.time()
+
+        return
+
+    def calibrate(self, calibrating_mass:float = None):
         zero_calibration_raw = None
         mass_calibration_raw = None
 
         lines_count = 0
 
-        res = None
-        while res != 'y' or bool(zero_calibration_raw) is False:
-            res = input('Zero-mass point calibration. Ready? [y]\n')
-            lines_count += 2
-            if res == 'y':
-                zero_calibration_raw = self._get_raw_data_mean(n_readings=100)             
-                if bool(zero_calibration_raw) is False:
-                    print('Failed. Retry...')
-                    lines_count += 1
+        try:
+            res = None
+            while res != 'y' or bool(zero_calibration_raw) is False:
+                res = input('Zero-mass point calibration. Ready? [y]\n')
+                lines_count += 2
+                if res == 'y':
+                    zero_calibration_raw = self._get_raw_data_mean(n_readings=100)             
+                    if bool(zero_calibration_raw) is False:
+                        print('Failed. Retry...')
+                        lines_count += 1
 
-        res = None
-        while res != 'y' or bool(mass_calibration_raw) is False:
-            res = input('Known-mass point calibration. Add the known mass. Ready? [y]\n')
-            lines_count += 2
-            if res == 'y':
-                mass_calibration_raw = self._get_raw_data_mean(n_readings=100)               
-                if bool(mass_calibration_raw) is False:
-                    print('Failed. Retry...')
-                    lines_count += 1
-                
-        if calibrating_mass is None:
-            calibrating_mass = input('Enter the known mass used for calibration (in grams): ')
-            calibrating_mass = float(calibrating_mass)
-            lines_count += 2
-        
-        x0 = zero_calibration_raw
-        y0 = 0
-        x1 = mass_calibration_raw
-        y1 = calibrating_mass
+            res = None
+            while res != 'y' or bool(mass_calibration_raw) is False:
+                res = input('Known-mass point calibration. Add the known mass. Ready? [y]\n')
+                lines_count += 2
+                if res == 'y':
+                    mass_calibration_raw = self._get_raw_data_mean(n_readings=100)               
+                    if bool(mass_calibration_raw) is False:
+                        print('Failed. Retry...')
+                        lines_count += 1
+                    
+            if calibrating_mass is None:
+                calibrating_mass = input('Enter the known mass used for calibration (in grams): ')
+                calibrating_mass = float(calibrating_mass)
+                lines_count += 2
+            
+            x0 = zero_calibration_raw
+            y0 = 0
+            x1 = mass_calibration_raw
+            y1 = calibrating_mass
 
-        self._slope = (y1 - y0) / (x1 - x0)
-        self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
+            self._slope = (y1 - y0) / (x1 - x0)
+            self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
 
-        self.is_calibrated = True
+            self.is_calibrated = True
+        except:
+            pass
         
         return self.is_calibrated, lines_count
 
-    def _reset_reading_attributes(self):
-        self._is_reading = False
-        time.sleep(0.01)
-
-        self._readings = None
-        self._start_reading_at = None
-        self._read_thread = None
-        self._batch_index = 0
-
-    def _get_raw_data_mean(self, n_readings : int = 1, kernel_size : int = 5):
+    def _get_raw_data_mean(self, n_readings:int = 1, kernel_size:int = 5):
         if n_readings == 1:
             mean_value = self._hx711.get_raw_data_mean(readings=1)
         else:
@@ -88,60 +108,75 @@ class LoadCell():
         
         return mean_value
 
-    def start_reading(self, frequency : int = 80):
-        self._readings = []
-        self._is_reading = True
-
-        self._read_thread = Thread(target=self._read, args=[frequency])
+    def start_reading(self):
+        self._init_reading_attributes()
         self._read_thread.start()
-        self._start_reading_at = time.time()
 
         return
 
-    def stop_reading(self):        
-        n_readings = len(self._readings)
-        reading_time_interval = time.time() - self._start_reading_at
+    def stop_reading(self):
+        self._is_reading = False
+        time.sleep(0.01)
+
+        readings = np.array(self._readings)
+        timings = np.array(self._timings)
+        
         self._reset_reading_attributes()
+        
+        if self.is_calibrated:
+            weights = self._slope * readings + self._y_intercept
+            forces = (weights / 1000) * 9.81
+            data = pd.DataFrame({'t': timings, 'F': forces})
+            is_force = True
+        else:
+            data = pd.DataFrame({'t': timings, 'raw': readings})
+            is_force = False
 
-        return n_readings, reading_time_interval
+        # TODO: eventualmente aggiungere qui vari filtri e post elaborazione dei dati
 
-    def _read(self, frequency : int = 80):
-        cycle_start_time = time.time()
-        cycle_period = 1 / frequency
-        cycle_delay = 0
+        return data, is_force
 
+    def _read(self):
         while self._is_reading is True:
-            current_time = time.time()
-            elapsed_time = current_time - cycle_start_time
+            self._readings.append(self._hx711._read())
+            self._timings.append(time.time())
 
-            if elapsed_time >= cycle_period - cycle_delay and self._is_reading is True:
-                reading = False
-                while reading is False:
-                    reading = self._hx711._read()
-                self._readings.append(reading)
-                cycle_start_time = time.time()
-                cycle_delay = cycle_start_time - current_time
+        return
 
-    def is_ready(self, batch_size : int = 5):
-        if len(self._readings) - self._batch_index >= batch_size:
+    def is_batch_ready(self, batch_index:int, batch_size:int = 5):
+        if len(self._readings) - batch_index >= batch_size:
             return True
         else:
             return False
 
-    def get_measurement(self, batch_size : int = 5, kernel_size : int = 5):
-        batch = self._readings[self._batch_index:self._batch_index + batch_size]
-        self._batch_index += batch_size
+    def get_batch(self, batch_index:int, batch_size:int = 15, kernel_size:int = 5):
+        batch = np.array(self._readings[batch_index:batch_index + batch_size])
+        batch_timings = np.array(self._timings[batch_index:batch_index + batch_size])
+        batch_index += batch_size
         
         batch_median = median(batch)
-        reading_tolerance = 0.2 # 20%
+        reading_tolerance = 0.5 # 50%
+
         for i in range(len(batch)):
             reading = batch[i]
-            if reading > batch_median * (1 + reading_tolerance) or reading < batch_median * (1 - reading_tolerance):
+            if abs(reading) > abs(batch_median) * (1 + reading_tolerance) or abs(reading) < abs(batch_median) * (1 - reading_tolerance):
+                print('batch:')
+                print(batch)
+                print('batch[i]:')
+                print(batch[i])
+                print('batch median:')
+                print(batch_median)
                 batch[i] = batch_median
         
         batch = scipy.signal.medfilt(batch, kernel_size)
 
-        for i in range(len(batch)):
-            batch[i] = self._slope * batch[i] + self._y_intercept
+        if self.is_calibrated:
+            batch = self._slope * batch + self._y_intercept
+            batch = (batch / 1000) * 9.81
+            batch = pd.DataFrame({'t': batch_timings, 'F': batch})
+            is_force = True
+        else:
+            batch = pd.DataFrame({'t': batch_timings, 'raw': batch})
+            is_force = False
 
-        return batch, self._batch_index - batch_size
+        return batch, batch_index, is_force
