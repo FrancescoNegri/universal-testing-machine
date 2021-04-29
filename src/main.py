@@ -204,16 +204,12 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     strain = []
     line.set_data(strain, stress)
 
-    flag = 1
-    
     _, _, t0 = my_controller.run(speed, distance, controller.UP, is_linear=True)
-    
+    my_load_cell.start_reading()
+
     batch_index = 0
 
     while my_controller.is_running:
-        if flag == 1:
-            my_load_cell.start_reading()
-            flag=0
         if my_load_cell.is_batch_ready(batch_index):
             batch, batch_index, _ = my_load_cell.get_batch(batch_index)
             batch['t'] = batch['t'] - t0
