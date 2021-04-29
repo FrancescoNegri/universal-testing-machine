@@ -98,7 +98,10 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
                 printed_lines -= printed_lines - 1
             
             batch, batch_index, _ = my_load_cell.get_batch(batch_index, batch_size)
-            print(f'\nMeasured force: {round(mean(batch), 3)} N | Absolute position: {round(my_controller.absolute_position, 2)} mm')
+
+            force = round(mean(batch['F']), 3)
+            absolute_position = round(my_controller.absolute_position, 2)
+            print(f'\nMeasured force: {force} N | Absolute position: {absolute_position} mm')
             printed_lines += 2
 
     my_load_cell.stop_reading()
@@ -178,6 +181,8 @@ def check_test_setup(setup:dict):
     return
 
 def execute_test(my_controller:controller.LinearController, my_load_cell:load_cell.LoadCell, cross_section:float, distance:float, speed:float):
+    start_section('TEST RESULTS')
+    
     # Plot initialization
     fig = plt.figure()
     ax = plt.axes()
@@ -241,10 +246,10 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     data['t'] = data['t'] - t0
 
     data['F_unfiltered'] = data['F']
-    data['stress_unfiltered'] = data['F'] / cross_section                   # in N/mm2 = MPa
-
     data['F'] = scipy.signal.medfilt(data['F'], 5)
+
     data['stress'] = data['F'] / cross_section                              # in N/mm2 = MPa
+    data['stress_unfiltered'] = data['F_unfiltered'] / cross_section        # in N/mm2 = MPa
 
     data['strain'] = (data['t'] * speed / initial_gauge_length) * 100       # in percentage
 
@@ -252,10 +257,14 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     print('# collected data: {}'.format(len(data['stress'])))
     print(f'# initial gauge length: {initial_gauge_length}')
     
-    # Save pandas DataFrame as an Excel file
-    data.to_excel('test_data.xlsx', sheet_name='Sheet1', header=False, index=False)
+    # Save pandas DataFrame as a CSV file
+    data.to_csv('test_data.csv', index=False)
 
-    print('Press Enter to end the test')    
+    input('\nPress ENTER to end the test...')
+    delete_last_lines(1) 
+    print('Press ENTER to end the test... Done') 
+
+    end_section()  
 
     return
 

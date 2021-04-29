@@ -1,7 +1,6 @@
 from statistics import mean, median
 import time
 
-from pandas.core.construction import array
 import RPi.GPIO as GPIO
 from hx711 import HX711
 import scipy
@@ -9,7 +8,7 @@ import scipy.signal
 from threading import Thread
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
 
 class LoadCell():
     def __init__(self, dat_pin:int, clk_pin:int):
@@ -115,9 +114,6 @@ class LoadCell():
         return
 
     def stop_reading(self):
-        self._is_reading = False
-        time.sleep(0.01)
-
         readings = np.array(self._readings)
         timings = np.array(self._timings)
         
@@ -137,9 +133,12 @@ class LoadCell():
         return data, is_force
 
     def _read(self):
-        while self._is_reading is True:
-            self._readings.append(self._hx711._read())
-            self._timings.append(time.time())
+        while self._is_reading:
+            try:
+                self._readings.append(self._hx711._read())
+                self._timings.append(time.time())
+            except:
+                pass
 
         return
 
