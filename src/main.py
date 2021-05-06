@@ -193,16 +193,16 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     initial_gauge_length = my_controller.absolute_position + clamps_initial_distance
 
     ax.set_xlim([0, round(((displacement / initial_gauge_length) * 1.1) * 100)]) # 10% margin
-    ax.set_ylim([0, 30])
+    ax.set_ylim([0, 10])
     fig.canvas.draw()   # note that the first draw comes before setting data
 
     ax_background = fig.canvas.copy_from_bbox(ax.bbox)
 
     plt.show(block=False)
 
-    stress = []
+    force = []
     strain = []
-    line.set_data(strain, stress)
+    line.set_data(strain, force)
 
     _, _, t0 = my_controller.run(speed, distance, controller.UP, is_linear=True)
     my_load_cell.start_reading()
@@ -214,13 +214,13 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
             batch, batch_index, _ = my_load_cell.get_batch(batch_index)
             batch['t'] = batch['t'] - t0
 
-            stresses = batch['F'] / cross_section                           # in N/mm2 = MPa
+            # stresses = batch['F'] / cross_section                           # in N/mm2 = MPa
             strains = (batch['t'] * speed / initial_gauge_length) * 100     # in percentage 
             
-            stress.extend(stresses)
+            force.extend(batch['F'])
             strain.extend(strains)
 
-            line.set_data(strain, stress)
+            line.set_data(strain, force)
 
             # restore background
             fig.canvas.restore_region(ax_background)
@@ -249,10 +249,14 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
 
     data['strain'] = (data['t'] * speed / initial_gauge_length) * 100       # in percentage
 
-    print(f'# plotted data: {len(stress)}')
-    print('# collected data: {}'.format(len(data['stress'])))
+    # TODO: add other data to the output file -> initial_gauge_length, test parameters, etc...
+
+    print(f'# plotted data: {len(force)}')
+    print('# collected data: {}'.format(len(data['F'])))
     print(f'# initial gauge length: {initial_gauge_length}')
     
+    # TODO: save the output file in an output folder with a unique (timestamp ?) filename
+
     # Save pandas DataFrame as a CSV file
     data.to_csv('test_data.csv', index=False)
 
