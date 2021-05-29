@@ -244,11 +244,12 @@ class StepperMotor():
         '''
         # Enable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 0)
-        time.sleep(0.05)
         
         # Set the stepper motor direction
         self._pi.write(self._dir_pin, direction.get_value())  # Set direction. 0 DOWN, 1 UP
-        time.sleep(0.05)
+        
+        # Let the driver to settle
+        time.sleep(0.01)
 
         # Set duty cycle and frequency
         if is_RPM:
@@ -283,7 +284,9 @@ class StepperMotor():
         
         # Disable the stepper motor (active-low logic)
         self._pi.write(self._en_pin, 1)
-        time.sleep(0.05)
+        
+        # Let the driver to settle
+        time.sleep(0.01)
 
         return run_interval
 
