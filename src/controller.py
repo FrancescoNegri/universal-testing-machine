@@ -2,8 +2,8 @@ import stepper
 from threading import Timer
 from gpiozero import Button
 
-UP = stepper.CCW
-DOWN = stepper.CW
+UP = stepper.CW
+DOWN = stepper.CCW
 
 
 class LinearController():
