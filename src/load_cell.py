@@ -122,15 +122,18 @@ class LoadCell():
         if self.is_calibrated:
             weights = self._slope * readings + self._y_intercept
             forces = (weights / 1000) * 9.81
-            data = pd.DataFrame({'t': timings, 'F': forces})
+            data = {'t': timings, 'F': forces}
             is_force = True
         else:
-            data = pd.DataFrame({'t': timings, 'raw': readings})
+            data = {'t': timings, 'raw': readings}
             is_force = False
 
         # TODO: eventualmente aggiungere qui vari filtri e post elaborazione dei dati
+        
+        df = pd.DataFrame.from_dict(data, orient='index')
+        df = df.transpose()
 
-        return data, is_force
+        return df, is_force
 
     def _read(self):
         while self._is_reading:
