@@ -101,7 +101,10 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
             batch, batch_index, _ = my_load_cell.get_batch(batch_index, batch_size)
 
             force = round(mean(batch['F']), 3)
+            try:
             absolute_position = round(my_controller.absolute_position, 2)
+            except:
+                absolute_position = 0
             print(f'\nMeasured force: {force} N | Absolute position: {absolute_position} mm')
             printed_lines += 2
 
