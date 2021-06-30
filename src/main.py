@@ -105,6 +105,11 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
             print(f'\nMeasured force: {force} N | Absolute position: {absolute_position} mm')
             printed_lines += 2
 
+        if button_down.is_active and my_controller._endstop_down.is_active:
+            my_controller.motor_stop()
+        if button_up.is_active and my_controller._endstop_up.is_active:
+            my_controller.motor_stop()
+
     my_load_cell.stop_reading()
     
     delete_last_lines(printed_lines)
