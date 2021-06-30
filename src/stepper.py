@@ -72,7 +72,7 @@ class StepperMotor():
     through PWM technique.
     '''
 
-    def __init__(self, total_steps:int, dir_pin:int, step_pin:int, en_pin:int, mode_pins:tuple, mode:Mode=FULL):
+    def __init__(self, total_steps:int, dir_pin:int, step_pin:int, en_pin:int, mode_pins:tuple, mode:Mode=FULL, gear_ratio:float=1):
         '''
         Parameters
         ----------
@@ -88,6 +88,9 @@ class StepperMotor():
             The three pins (M0, M1, M2) determining the motor mode.
         mode : Mode, default=FULL
             The motor mode to use.
+        gear_ratio : float
+            The gear ratio if the motor employs a gearbox. By default it is 1, thus
+            no gearbox is assumed.
         '''
         self._total_steps = total_steps
         self._dir_pin = dir_pin
@@ -95,6 +98,7 @@ class StepperMotor():
         self._en_pin = en_pin
         self._mode_pins = mode_pins
         self._mode = mode
+        self._gear_ratio = gear_ratio
         self._started_at = None
 
         def is_pigpiod_running():
@@ -199,6 +203,9 @@ class StepperMotor():
         '''
 
         PWMfreq_revolution = self._total_steps / self._mode.get_microstep_size()
+
+        # Adjust the desired speed to the gear ratio
+        RPS = RPS * self._gear_ratio
 
         # 1 rps : PWMfreq_revolution = RPS : PWMfreq
         PWMfreq = RPS * PWMfreq_revolution
