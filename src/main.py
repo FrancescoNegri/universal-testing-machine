@@ -32,13 +32,13 @@ def calibrate(my_controller, my_load_cell):
     try:
         start_section('CALIBRATION')
         print('Calibrating the crossbar...')
-        is_calibrated = my_controller.calibrate(speed=6, direction=controller.DOWN, is_linear=False)
+        is_calibrated = my_controller.calibrate(speed=0.75, direction=controller.DOWN, is_linear=False)
         if is_calibrated:
             delete_last_lines(1)
             print('Calibrating the crossbar... Done')
 
         print('Adjusting crossbar position...')
-        my_controller.run(speed=6, distance=55, direction=controller.UP, is_linear=False)
+        my_controller.run(speed=5, distance=50, direction=controller.UP)
         while my_controller.is_running:
             pass
         delete_last_lines(1)
@@ -61,7 +61,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     
     mode = 0
 
-    button_mode = Button(7)
+    button_mode = Button(22)
 
     def switch_mode():
         nonlocal mode
@@ -72,11 +72,12 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
 
     button_up = Button(17)
     button_down = Button(27)
+    button_speed_linear = 3
 
-    button_up.when_pressed = lambda: my_controller.motor_start(5, controller.UP)
+    button_up.when_pressed = lambda: my_controller.motor_start(button_speed_linear, controller.UP)
     button_up.when_released = lambda: my_controller.motor_stop()
 
-    button_down.when_pressed = lambda: my_controller.motor_start(5, controller.DOWN)
+    button_down.when_pressed = lambda: my_controller.motor_start(button_speed_linear, controller.DOWN)
     button_down.when_released = lambda: my_controller.motor_stop()
 
     print('Now you are allowed to manually \nmove the crossbar up and down.')
@@ -269,8 +270,8 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     return
 
 if __name__ == '__main__':
-    motor = stepper.StepperMotor(total_steps=200, dir_pin=20, step_pin=13, en_pin=23, mode_pins=(14, 15, 18), mode=stepper.ONE_THIRTYTWO)
-    control = controller.LinearController(motor, screw_pitch=1.5, pin_end_down=8, pin_end_up=25)
+    motor = stepper.StepperMotor(total_steps=200, dir_pin=20, step_pin=13, en_pin=23, mode_pins=(14, 15, 18), mode=stepper.ONE_THIRTYTWO, gear_ratio=5.18)
+    control = controller.LinearController(motor, screw_pitch=5, pin_end_down=8, pin_end_up=25)
     lc = load_cell.LoadCell(dat_pin=5, clk_pin=6)
 
     calibrate(control, lc)
