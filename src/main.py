@@ -36,6 +36,9 @@ def calibrate(my_controller, my_load_cell):
         if is_calibrated:
             delete_last_lines(1)
             print('Calibrating the crossbar... Done')
+        else:
+            delete_last_lines(1)
+            print('Calibrating the crossbar... FAILED')
 
         print('Adjusting crossbar position...')
         my_controller.run(speed=5, distance=50, direction=controller.UP)
@@ -86,6 +89,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
 
     my_load_cell.start_reading()
     
+    # from threading import Timer
     # my_timer = Timer(5, switch_mode)
     # my_timer.start()
     
@@ -102,7 +106,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
 
             force = round(mean(batch['F']), 3)
             try:
-            absolute_position = round(my_controller.absolute_position, 2)
+                absolute_position = round(my_controller.absolute_position, 2)
             except:
                 absolute_position = 0
             print(f'\nMeasured force: {force} N | Absolute position: {absolute_position} mm')
