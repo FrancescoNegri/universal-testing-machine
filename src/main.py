@@ -11,7 +11,7 @@ import utility
 
 from gpiozero import Button
 
-def calibrate(my_controller, my_load_cell):
+def calibrate(my_controller, my_load_cell, calibration_dir):
     utility.start_section('CALIBRATION')
 
     try:
@@ -31,7 +31,7 @@ def calibrate(my_controller, my_load_cell):
         print('Adjusting crossbar position... Done')
 
         print('Calibrating the load cell...\n')
-        is_calibrated = my_load_cell.calibrate(calibrating_mass=298.27)
+        is_calibrated = my_load_cell.calibrate(calibration_dir=calibration_dir, calibrating_mass=298.27)
         utility.delete_last_lines(2)
         if is_calibrated:
             print('Calibrating the load cell... Done')
@@ -271,7 +271,8 @@ if __name__ == '__main__':
     control = controller.LinearController(motor, screw_pitch=5, pin_end_down=8, pin_end_up=25)
     lc = load_cell.LoadCell(dat_pin=5, clk_pin=6)
 
-    calibrate(control, lc)
+    output_dir, calibration_dir = utility.init_dirs()
+    calibrate(control, lc, calibration_dir)
     execute_manual_mode(control, lc)
     setup, cross_section, displacement, linear_speed = setup_test()
     check_test_setup(setup)

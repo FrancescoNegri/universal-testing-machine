@@ -9,6 +9,7 @@ from threading import Thread
 import numpy as np
 import pandas as pd
 import utility
+import json
 
 
 class LoadCell():
@@ -22,6 +23,7 @@ class LoadCell():
         self._slope = None
         self._y_intercept = None
         self._tare_weight = 0
+        self._calibration_filename = 'load_cell_calibration.json'
 
         # Reading attributes
         self._is_reading = False
@@ -49,53 +51,88 @@ class LoadCell():
 
         return
 
-    def calibrate(self, calibrating_mass:float = None):
-        zero_calibration_raw = None
-        mass_calibration_raw = None
-
-        lines_count = 0
+    def _check_for_existing_calibration(self, calibration_dir:str):
+        self.is_calibrated = False
+        calibration_dir = calibration_dir + r'/' + self._calibration_filename
 
         try:
-            res = None
-            while res != 'y' or bool(zero_calibration_raw) is False:
-                res = input('Zero-mass point calibration. Ready? [y]\n')
-                lines_count += 2
-                if res == 'y':
-                    zero_calibration_raw = self._get_raw_data_mean(n_readings=100)             
-                    if bool(zero_calibration_raw) is False:
-                        print('Failed. Retry...')
-                        lines_count += 1
-            utility.delete_last_lines(lines_count)
-            
-            lines_count = 0
-            res = None
-
-            while res != 'y' or bool(mass_calibration_raw) is False:
-                res = input('Known-mass point calibration. Add the known mass. Ready? [y]\n')
-                lines_count += 2
-                if res == 'y':
-                    mass_calibration_raw = self._get_raw_data_mean(n_readings=100)               
-                    if bool(mass_calibration_raw) is False:
-                        print('Failed. Retry...')
-                        lines_count += 1
-                    
-            if calibrating_mass is None:
-                calibrating_mass = input('Enter the known mass used for calibration (in grams): ')
-                calibrating_mass = float(calibrating_mass)
-                lines_count += 2
-            utility.delete_last_lines(lines_count)
-            
-            x0 = zero_calibration_raw
-            y0 = 0
-            x1 = mass_calibration_raw
-            y1 = calibrating_mass
-
-            self._slope = (y1 - y0) / (x1 - x0)
-            self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
-
-            self.is_calibrated = True
+            with open(calibration_dir) as f:
+                calibration = json.load(f)
+                
+                lines_count = 0
+                res = None
+                while res != 'y' and res != 'n':
+                    res = input('A previous calibration has been found. Do you want to use it? [y/n]\n')
+                    lines_count += 2
+                    if res == 'y':
+                        self._slope = calibration['slope']
+                        self._y_intercept = calibration['y_intercept']
+                        self.is_calibrated = True
+                    elif res == 'n':
+                        self.is_calibrated = False
+                utility.delete_last_lines(lines_count)
         except:
-            pass
+            self.is_calibrated = False
+        return
+
+    def calibrate(self, calibration_dir:str, calibrating_mass:float = None):
+        self._check_for_existing_calibration(calibration_dir=calibration_dir)
+
+        if not self.is_calibrated:
+            zero_calibration_raw = None
+            mass_calibration_raw = None
+
+            lines_count = 0
+
+            try:
+                res = None
+                while res != 'y' or bool(zero_calibration_raw) is False:
+                    res = input('Zero-mass point calibration. Ready? [y]\n')
+                    lines_count += 2
+                    if res == 'y':
+                        zero_calibration_raw = self._get_raw_data_mean(n_readings=100)
+                        if bool(zero_calibration_raw) is False:
+                            print('Failed. Retry...')
+                            lines_count += 1
+                utility.delete_last_lines(lines_count)
+                
+                lines_count = 0
+                res = None
+
+                while res != 'y' or bool(mass_calibration_raw) is False:
+                    res = input('Known-mass point calibration. Add the known mass. Ready? [y]\n')
+                    lines_count += 2
+                    if res == 'y':
+                        mass_calibration_raw = self._get_raw_data_mean(n_readings=100)  
+                        if bool(mass_calibration_raw) is False:
+                            print('Failed. Retry...')
+                            lines_count += 1
+                        
+                if calibrating_mass is None:
+                    calibrating_mass = input('Enter the known mass used for calibration (in grams): ')
+                    calibrating_mass = float(calibrating_mass)
+                    lines_count += 2
+                utility.delete_last_lines(lines_count)
+                
+                x0 = zero_calibration_raw
+                y0 = 0
+                x1 = mass_calibration_raw
+                y1 = calibrating_mass
+
+                self._slope = (y1 - y0) / (x1 - x0)
+                self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
+
+                calibration = {
+                    'slope': self._slope,
+                    'y_intercept': self._y_intercept
+                }
+                calibration_dir = calibration_dir + r'/' + self._calibration_filename
+                with open(calibration_dir, 'w') as f:
+                    json.dump(calibration, f)
+
+                self.is_calibrated = True
+            except:
+                pass
         
         return self.is_calibrated
 
