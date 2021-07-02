@@ -1,5 +1,4 @@
 from statistics import mean
-import sys
 
 import stepper
 import controller
@@ -8,59 +7,45 @@ import numpy as np
 import pandas as pd
 import scipy.signal
 import matplotlib.pyplot as plt
+import utility
 
 from gpiozero import Button
 
-def start_section(name):
-    print(f'\n\t\t{name}')
-    print('--------------------------------------------------')
-    return
-
-def end_section():
-    print('--------------------------------------------------')
-    return
-
-def delete_last_lines(n_lines:int=1):
-    for _ in range(n_lines):
-        #cursor up one line
-        sys.stdout.write('\x1b[1A')
-
-        #delete last line
-        sys.stdout.write('\x1b[2K')
-
 def calibrate(my_controller, my_load_cell):
+    utility.start_section('CALIBRATION')
+
     try:
-        start_section('CALIBRATION')
         print('Calibrating the crossbar...')
         is_calibrated = my_controller.calibrate(speed=0.75, direction=controller.DOWN, is_linear=False)
+        utility.delete_last_lines(1)
         if is_calibrated:
-            delete_last_lines(1)
             print('Calibrating the crossbar... Done')
         else:
-            delete_last_lines(1)
             print('Calibrating the crossbar... FAILED')
 
         print('Adjusting crossbar position...')
         my_controller.run(speed=5, distance=50, direction=controller.UP)
         while my_controller.is_running:
             pass
-        delete_last_lines(1)
+        utility.delete_last_lines(1)
         print('Adjusting crossbar position... Done')
+
+        print('Calibrating the load cell...\n')
+        is_calibrated = my_load_cell.calibrate(calibrating_mass=298.27)
+        utility.delete_last_lines(2)
+        if is_calibrated:
+            print('Calibrating the load cell... Done')
+        else:
+            print('Calibrating the load cell... FAILED')
 
     except:
         motor.stop()
 
-    print('Calibrating the load cell...\n')
-    _, printed_lines = my_load_cell.calibrate(calibrating_mass=298.27)
-
-    delete_last_lines(printed_lines + 2)
-    print('Calibrating the load cell... Done')
-
-    end_section()
+    utility.end_section()
     return
 
 def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:load_cell.LoadCell):
-    start_section('MANUAL MODE')
+    utility.start_section('MANUAL MODE')
     
     mode = 0
 
@@ -99,7 +84,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
     while mode == 0:
         if my_load_cell.is_batch_ready(batch_index, batch_size):
             if printed_lines > 1:
-                delete_last_lines(printed_lines - 1)
+                utility.delete_last_lines(printed_lines - 1)
                 printed_lines -= printed_lines - 1
             
             batch, batch_index, _ = my_load_cell.get_batch(batch_index, batch_size)
@@ -119,14 +104,14 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
 
     my_load_cell.stop_reading()
     
-    delete_last_lines(printed_lines)
+    utility.delete_last_lines(printed_lines)
     print('Waiting for manual mode to be stopped... Done')
-    end_section()
+    utility.end_section()
 
     return
 
 def setup_test():
-    start_section('TEST SETUP')
+    utility.start_section('TEST SETUP')
 
     printed_lines = 0
 
@@ -134,7 +119,7 @@ def setup_test():
     printed_lines += 2
     cross_section = input('Insert sample cross section in mm²: ')
     printed_lines += 1
-    delete_last_lines(printed_lines)
+    utility.delete_last_lines(printed_lines)
     printed_lines -= printed_lines
     print('Waiting for sample cross-section... Done')
 
@@ -142,7 +127,7 @@ def setup_test():
     printed_lines += 2
     displacement = input('Insert the desired displacement in mm: ')
     printed_lines += 1
-    delete_last_lines(printed_lines)
+    utility.delete_last_lines(printed_lines)
     printed_lines -= printed_lines
     print('Waiting for the displacement to reach... Done')
 
@@ -150,11 +135,11 @@ def setup_test():
     printed_lines += 2
     linear_speed = input('Insert the desired linear \nspeed for the crossbar in mm/s: ')
     printed_lines += 2
-    delete_last_lines(printed_lines)
+    utility.delete_last_lines(printed_lines)
     printed_lines -= printed_lines
     print('Waiting for the crossbar linear speed... Done')    
 
-    end_section()
+    utility.end_section()
 
     cross_section = float(cross_section)
     displacement = float(displacement)
@@ -178,7 +163,7 @@ def setup_test():
     return setup, cross_section, displacement, linear_speed
 
 def check_test_setup(setup:dict):
-    start_section('CHECK TEST PARAMETERS')
+    utility.start_section('CHECK TEST PARAMETERS')
 
     for key in setup:
         value = setup[key]['value']
@@ -186,15 +171,15 @@ def check_test_setup(setup:dict):
         print(f'{key} = {value} {unit}')
 
     input('\nPress ENTER to start...')
-    delete_last_lines(1)
+    utility.delete_last_lines(1)
     print('Press ENTER to start... Done')
 
-    end_section()
+    utility.end_section()
 
     return
 
 def execute_test(my_controller:controller.LinearController, my_load_cell:load_cell.LoadCell, cross_section:float, distance:float, speed:float):
-    start_section('TEST RESULTS')
+    utility.start_section('TEST RESULTS')
     
     # Plot initialization
     fig = plt.figure()
@@ -274,10 +259,10 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     data.to_csv('test_data.csv', index=False)
 
     input('\nPress ENTER to end the test...')
-    delete_last_lines(1) 
+    utility.delete_last_lines(1) 
     print('Press ENTER to end the test... Done') 
 
-    end_section()  
+    utility.end_section()  
 
     return
 

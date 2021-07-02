@@ -8,6 +8,7 @@ import scipy.signal
 from threading import Thread
 import numpy as np
 import pandas as pd
+import utility
 
 
 class LoadCell():
@@ -64,8 +65,11 @@ class LoadCell():
                     if bool(zero_calibration_raw) is False:
                         print('Failed. Retry...')
                         lines_count += 1
-
+            utility.delete_last_lines(lines_count)
+            
+            lines_count = 0
             res = None
+
             while res != 'y' or bool(mass_calibration_raw) is False:
                 res = input('Known-mass point calibration. Add the known mass. Ready? [y]\n')
                 lines_count += 2
@@ -79,6 +83,7 @@ class LoadCell():
                 calibrating_mass = input('Enter the known mass used for calibration (in grams): ')
                 calibrating_mass = float(calibrating_mass)
                 lines_count += 2
+            utility.delete_last_lines(lines_count)
             
             x0 = zero_calibration_raw
             y0 = 0
@@ -92,7 +97,7 @@ class LoadCell():
         except:
             pass
         
-        return self.is_calibrated, lines_count
+        return self.is_calibrated
 
     def _get_raw_data_mean(self, n_readings:int = 1, kernel_size:int = 5):
         if n_readings == 1:
