@@ -126,6 +126,7 @@ class LoadCell():
                 calibration = {
                     'slope': self._slope,
                     'y_intercept': self._y_intercept,
+                    'calibrating_mass_grams': calibrating_mass,
                     'date': datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
                 }
                 calibration_dir = calibration_dir + r'/' + self._calibration_filename
