@@ -31,7 +31,7 @@ def calibrate(my_controller, my_load_cell, calibration_dir):
         print('Adjusting crossbar position... Done')
 
         print('Calibrating the load cell...\n')
-        is_calibrated = my_load_cell.calibrate(calibration_dir=calibration_dir, calibrating_mass=298.27)
+        is_calibrated = my_load_cell.calibrate(calibration_dir=calibration_dir, calibrating_mass=63.352)
         utility.delete_last_lines(2)
         if is_calibrated:
             print('Calibrating the load cell... Done')
@@ -89,7 +89,7 @@ def execute_manual_mode(my_controller:controller.LinearController, my_load_cell:
             
             batch, batch_index, _ = my_load_cell.get_batch(batch_index, batch_size)
 
-            force = round(mean(batch['F']), 3)
+            force = round(mean(batch['F']), 5)
             try:
                 absolute_position = round(my_controller.absolute_position, 2)
             except:
@@ -178,7 +178,7 @@ def check_test_setup(setup:dict):
 
     return
 
-def execute_test(my_controller:controller.LinearController, my_load_cell:load_cell.LoadCell, cross_section:float, distance:float, speed:float):
+def execute_test(my_controller:controller.LinearController, my_load_cell:load_cell.LoadCell, cross_section:float, distance:float, speed:float, output_dir:str):
     utility.start_section('TEST RESULTS')
     
     # Plot initialization
@@ -255,9 +255,8 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     # TODO: save the output file in an output folder with a unique (timestamp ?) filename
 
     # Save pandas DataFrame as a CSV file
-    timestr = datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')
-    filename = timestr + '.csv'
-    data.to_csv(filename, index=False)
+    filename = 'output_' + output_dir.split('/')[-1] + '.csv'
+    data.to_csv(output_dir + r'/' + filename, index=False)
 
     input('\nPress ENTER to end the test...')
     utility.delete_last_lines(1) 
@@ -277,4 +276,4 @@ if __name__ == '__main__':
     execute_manual_mode(control, lc)
     setup, cross_section, displacement, linear_speed = setup_test()
     check_test_setup(setup)
-    execute_test(control, lc, cross_section, displacement, linear_speed)
+    execute_test(control, lc, cross_section, displacement, linear_speed, output_dir)
