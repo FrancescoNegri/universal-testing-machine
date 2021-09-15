@@ -241,7 +241,7 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     data['displacement'] = (data['t'] * speed )
     data['F_raw'] = data['F']
     data['F_med5'] = scipy.signal.medfilt(data['F'], 5)
-    data['F_med20'] = scipy.signal.medfilt(data['F'], 20)
+    data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
     data['stress_med5'] = data['F_med5'] / cross_section                              # in N/mm2 = MPa
     data['stress_med20'] = data['F_med20'] / cross_section         # in N/mm2 = MPa
     data['strain'] = (data['t'] * speed / initial_gauge_length) * 100       # in percentage
