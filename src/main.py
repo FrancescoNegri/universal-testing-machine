@@ -8,7 +8,7 @@ import pandas as pd
 import scipy.signal
 import matplotlib.pyplot as plt
 import utility
-
+from datetime import datetime
 from gpiozero import Button
 
 def calibrate(my_controller, my_load_cell, calibration_dir):
@@ -238,13 +238,12 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     data, _ = my_load_cell.stop_reading()
 
     data['t'] = data['t'] - t0
-
-    data['F_unfiltered'] = data['F']
-    data['F'] = scipy.signal.medfilt(data['F'], 5)
-
-    data['stress'] = data['F'] / cross_section                              # in N/mm2 = MPa
-    data['stress_unfiltered'] = data['F_unfiltered'] / cross_section        # in N/mm2 = MPa
-
+    data['displacement'] = (data['t'] * speed )
+    data['F_raw'] = data['F']
+    data['F_med5'] = scipy.signal.medfilt(data['F'], 5)
+    data['F_med20'] = scipy.signal.medfilt(data['F'], 20)
+    data['stress_med5'] = data['F_med5'] / cross_section                              # in N/mm2 = MPa
+    data['stress_med20'] = data['F_med20'] / cross_section         # in N/mm2 = MPa
     data['strain'] = (data['t'] * speed / initial_gauge_length) * 100       # in percentage
 
     # TODO: add other data to the output file -> initial_gauge_length, test parameters, etc...
@@ -256,7 +255,9 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     # TODO: save the output file in an output folder with a unique (timestamp ?) filename
 
     # Save pandas DataFrame as a CSV file
-    data.to_csv('test_data.csv', index=False)
+    timestr = datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')
+    filename = timestr + '.csv'
+    data.to_csv(filename, index=False)
 
     input('\nPress ENTER to end the test...')
     utility.delete_last_lines(1) 
