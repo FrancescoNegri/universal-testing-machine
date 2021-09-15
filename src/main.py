@@ -187,7 +187,7 @@ def execute_test(my_controller:controller.LinearController, my_load_cell:load_ce
     line, = ax.plot([], lw=3)
     text = ax.text(0.8, 0.5, '')
 
-    clamps_initial_distance = 21.5
+    clamps_initial_distance = 9.15
     initial_gauge_length = my_controller.absolute_position + clamps_initial_distance
 
     ax.set_xlim([0, round(((displacement / initial_gauge_length) * 1.1) * 100)]) # 10% margin
