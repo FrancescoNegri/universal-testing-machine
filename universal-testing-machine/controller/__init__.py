@@ -250,9 +250,7 @@ class LinearController():
             self.motor_stop()
 
             self.is_calibrated = has_reached_endstop
-
-            self.is_calibrated = True
-
+            
             if self.is_calibrated:
                 self.absolute_position = 0
                 self._calibration_direction = direction

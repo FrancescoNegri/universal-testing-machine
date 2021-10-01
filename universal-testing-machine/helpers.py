@@ -1,10 +1,12 @@
 import os
+from statistics import mean
 from InquirerPy import inquirer, validator
 from datetime import datetime
 import utility
 import controller
 import loadcell
 import json
+from gpiozero import Button
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
@@ -99,4 +101,66 @@ def calibrate_controller(my_controller:controller.LinearController, adjustment_p
     utility.delete_last_lines(1)
     print('Adjusting crossbar position... Done')
 
+    return
+
+def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, speed:float, mode_button_pin:int, up_button_pin:int, down_button_pin:int):
+    mode = 0
+
+    mode_button = Button(mode_button_pin)
+    up_button = Button(up_button_pin)
+    down_button = Button(down_button_pin)
+
+    def switch_mode():
+        nonlocal mode
+        mode = 1
+        return
+    
+    mode_button.when_released = switch_mode
+
+    up_button.when_pressed = lambda: my_controller.motor_start(speed, controller.UP)
+    up_button.when_released = lambda: my_controller.motor_stop()
+
+    down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
+    down_button.when_released = lambda: my_controller.motor_stop()
+
+    print('Now you are allowed to manually \nmove the crossbar up and down.')
+    print('\nWaiting for manual mode to be stopped...')
+    printed_lines = 4
+
+    batch_index = 0
+    batch_size = 20
+    my_loadcell.start_reading()
+
+    while mode == 0:
+        if my_loadcell.is_calibrated:
+            if my_loadcell.is_batch_ready(batch_index, batch_size):
+                if printed_lines > 4:
+                    utility.delete_last_lines(printed_lines - 4)
+                    printed_lines -= printed_lines - 4
+                
+                batch, batch_index, _ = my_loadcell.get_batch(batch_index, batch_size)
+
+                force = round(mean(batch['F']), 5)
+
+                if my_controller.is_calibrated:
+                    try:
+                        absolute_position = round(my_controller.absolute_position, 2)
+                    except:
+                        absolute_position = 0
+                    print(f'\nMeasured force: {force} N | Absolute position: {absolute_position} mm')
+                    printed_lines += 2
+                else:
+                    print(f'\nMeasured force: {force} N')
+                    printed_lines += 2
+
+        if down_button.is_active and my_controller._endstop_down.is_active:
+            my_controller.motor_stop()
+        if up_button.is_active and my_controller._endstop_up.is_active:
+            my_controller.motor_stop()
+
+    my_loadcell.stop_reading()
+    
+    utility.delete_last_lines(printed_lines)
+    print('Waiting for manual mode to be stopped... Done')
+    
     return

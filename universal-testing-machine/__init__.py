@@ -22,13 +22,16 @@ my_loadcell = loadcell.LoadCell(
     clk_pin=6
 )
 
+print('### UNIVERSAL TESTING MACHINE ###')
+
 result = 0
 
 while result is not None:
+    print('\n')
     result = inquirer.select(
         message='Select a menu voice:',
         choices=[
-                {'name': 'Mass Calibration', 'value': 1},
+                {'name': 'Load Cell Calibration', 'value': 1},
                 {'name': 'Manual Control', 'value': 2},
                 {'name': 'Monotonic Test', 'value': 3},
                 {'name': 'Cyclic Test', 'value': 4},
@@ -37,20 +40,40 @@ while result is not None:
         default=3
     ).execute()
 
-    if result == 2:
-        print('Not implemented yet.')
+    if result == 1:
+        calibration_dir = helpers.create_calibration_dir()
+        helpers.check_existing_calibration(calibration_dir, my_loadcell)
+        if my_loadcell.is_calibrated is not True:
+            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+    elif result == 2:
+        helpers.start_manual_mode(
+            my_controller,
+            my_loadcell,
+            speed=3,
+            mode_button_pin=22,
+            up_button_pin=17,
+            down_button_pin=27
+        )
     elif result == 3:
-        # adjustment_position = float(inquirer.text(
-        #     message='Specify the crossbar initial position [mm]:',
-        #     default='50',
-        #     validate=validator.NumberValidator()
-        # ).execute())
-        # helpers.calibrate_controller(my_controller=my_controller, adjustment_position=adjustment_position)
+        adjustment_position = float(inquirer.text(
+            message='Specify the crossbar initial position [mm]:',
+            default='50',
+            validate=validator.NumberValidator()
+        ).execute())
+        helpers.calibrate_controller(my_controller=my_controller, adjustment_position=adjustment_position)
 
         calibration_dir = helpers.create_calibration_dir()
         helpers.check_existing_calibration(calibration_dir, my_loadcell)
         if my_loadcell.is_calibrated is not True:
             helpers.calibrate_loadcell(my_loadcell, calibration_dir)
 
+        helpers.start_manual_mode(
+            my_controller,
+            my_loadcell,
+            speed=3,
+            mode_button_pin=22,
+            up_button_pin=17,
+            down_button_pin=27
+        )
     elif result == 4:
         print('Not implemented yet.')
