@@ -1,4 +1,4 @@
 /.vscode
-/src/__pycache__
+__pycache__/
 /output
 /.calibration
