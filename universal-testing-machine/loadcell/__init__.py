@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import json
 
+#HACK#
 import random
 def read_placeholder():
     time.sleep(0.0125)
@@ -132,6 +133,7 @@ class LoadCell():
     def _read(self):
         while self._is_reading:
             try:
+                #HACK#
                 # self._readings.append(self._hx711._read())
                 self._readings.append(read_placeholder())
                 self._timings.append(time.time())
