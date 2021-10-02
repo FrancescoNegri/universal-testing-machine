@@ -85,7 +85,7 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
 
     return
 
-def calibrate_controller(my_controller:controller.LinearController, adjustment_position:float):
+def calibrate_controller(my_controller:controller.LinearController):
     print('Calibrating the crossbar...')
     is_calibrated = my_controller.calibrate(speed=0.75, direction=controller.DOWN, is_linear=False)
     utility.delete_last_lines(1)
@@ -93,7 +93,10 @@ def calibrate_controller(my_controller:controller.LinearController, adjustment_p
         print('Calibrating the crossbar... Done')
     else:
         print('Calibrating the crossbar... FAILED')
+    
+    return
 
+def adjust_crossbar_position(my_controller:controller.LinearController, adjustment_position:float):
     print('Adjusting crossbar position...')
     my_controller.run(speed=5, distance=adjustment_position, direction=controller.UP)
     while my_controller.is_running:

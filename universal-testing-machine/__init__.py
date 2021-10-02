@@ -60,20 +60,23 @@ while result is not None:
             default='50',
             validate=validator.NumberValidator()
         ).execute())
-        helpers.calibrate_controller(my_controller=my_controller, adjustment_position=adjustment_position)
+        helpers.calibrate_controller(my_controller=my_controller)
+        
+        if my_controller.is_calibrated:
+            helpers.adjust_crossbar_position(my_controller=my_controller, adjustment_position=adjustment_position)
 
-        calibration_dir = helpers.create_calibration_dir()
-        helpers.check_existing_calibration(calibration_dir, my_loadcell)
-        if my_loadcell.is_calibrated is not True:
-            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+            calibration_dir = helpers.create_calibration_dir()
+            helpers.check_existing_calibration(calibration_dir, my_loadcell)
+            if my_loadcell.is_calibrated is not True:
+                helpers.calibrate_loadcell(my_loadcell, calibration_dir)
 
-        helpers.start_manual_mode(
-            my_controller,
-            my_loadcell,
-            speed=3,
-            mode_button_pin=22,
-            up_button_pin=17,
-            down_button_pin=27
-        )
+            helpers.start_manual_mode(
+                my_controller,
+                my_loadcell,
+                speed=3,
+                mode_button_pin=22,
+                up_button_pin=17,
+                down_button_pin=27
+            )
     elif result == 4:
         print('Not implemented yet.')
