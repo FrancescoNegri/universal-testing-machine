@@ -9,7 +9,7 @@ class LinearController():
     '''
     Class controlling a stepper motor (rotational) from a linear point of view.
     '''
-    def __init__(self, motor:stepper.StepperMotor, screw_pitch:float, pin_end_up:int, pin_end_down:int):
+    def __init__(self, motor:stepper.StepperMotor, screw_pitch:float, up_endstop_pin:int, down_endstop_pin:int):
         '''
         Parameters
         ----------
@@ -34,8 +34,8 @@ class LinearController():
         self._rotational_speed = None     
 
         # Other
-        self._endstop_up = Button(pin_end_up)
-        self._endstop_down = Button(pin_end_down)   
+        self._endstop_up = Button(up_endstop_pin)
+        self._endstop_down = Button(down_endstop_pin)   
 
     def _get_interval_from_distance(self, speed:float, distance:float, is_linear:bool=True):
         '''
@@ -184,24 +184,11 @@ class LinearController():
         return run_interval, run_distance
     
     def _update_absolute_position(self, run_distance:float):
-        # if self._running_direction.get_value() == UP.get_value():
-        #     if self._calibration_direction.get_value() == UP.get_value():
-        #         self.absolute_position -= run_distance
-
-        #     elif self._calibration_direction.get_value() == DOWN.get_value():
-        #         self.absolute_position += run_distance
-
-        # elif self._running_direction.get_value() == DOWN.get_value():
-        #     if self._calibration_direction.get_value() == UP.get_value():
-        #         self.absolute_position += run_distance
-
-        #     elif self._calibration_direction.get_value() == DOWN.get_value():
-        #         self.absolute_position -= run_distance
-
         if self._running_direction.get_value() is self._calibration_direction.get_value():
             self.absolute_position -= run_distance
         elif self._running_direction.get_value() is not self._calibration_direction.get_value():
             self.absolute_position += run_distance
+        
         return
     
     def abort(self):

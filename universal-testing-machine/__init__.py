@@ -13,8 +13,8 @@ my_controller = controller.LinearController(
         gear_ratio=5.18
     ),
     screw_pitch=5,
-    pin_end_up=25,
-    pin_end_down=8
+    up_endstop_pin=25,
+    down_endstop_pin=8
 )
 
 my_loadcell = loadcell.LoadCell(
