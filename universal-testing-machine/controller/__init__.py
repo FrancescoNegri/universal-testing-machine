@@ -34,8 +34,8 @@ class LinearController():
         self._rotational_speed = None     
 
         # Other
-        self._endstop_up = Button(up_endstop_pin)
-        self._endstop_down = Button(down_endstop_pin)   
+        self._up_endstop = Button(pin=up_endstop_pin, bounce_time=0.05)
+        self._down_endstop = Button(pin=down_endstop_pin, bounce_time=0.05)   
 
     def _get_interval_from_distance(self, speed:float, distance:float, is_linear:bool=True):
         '''
@@ -177,6 +177,12 @@ class LinearController():
 
             # Reset running attributes
             self._reset_running_attributes()
+
+            # Disable endstops
+            if self._up_endstop.when_pressed is not None:
+                self._up_endstop.when_pressed = None
+            if self._down_endstop.when_pressed is not None:
+                self._down_endstop.when_pressed = None            
         else:
             run_interval = None
             run_distance = None
@@ -223,9 +229,9 @@ class LinearController():
             self.motor_start(speed, direction, is_linear)
 
             if direction.get_value() == UP.get_value():
-                selected_endstop = self._endstop_up
+                selected_endstop = self._up_endstop
             elif direction.get_value() == DOWN.get_value():
-                selected_endstop = self._endstop_down
+                selected_endstop = self._down_endstop
             
             timeout = None
             if calibration_timeout is True:
@@ -323,6 +329,17 @@ class LinearController():
             self.is_running = True
             self._running_direction = direction
             self._rotational_speed = speed
+
+            # Set endstops check
+            def handle_endstop(endstop_direction:stepper.Direction):
+                nonlocal self
+                if self.is_calibrated:
+                    if self._running_direction.get_value() == endstop_direction.get_value():
+                        self.abort()
+                return
+
+            self._up_endstop.when_pressed = lambda: handle_endstop(UP)
+            self._down_endstop.when_pressed = lambda: handle_endstop(DOWN)
         else:
             print('The motor is already running')
             interval = None
