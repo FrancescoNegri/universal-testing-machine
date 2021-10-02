@@ -222,7 +222,7 @@ class LinearController():
 
         return run_interval, run_distance
     
-    def calibrate(self, speed:float, direction:stepper.Direction = DOWN, is_linear:bool=True, calibration_timeout:bool = True):
+    def calibrate(self, speed:float, direction:stepper.Direction = DOWN, is_linear:bool=True, has_timeout:bool = True):
         self.is_calibrated = False
         
         if not self.is_running:
@@ -233,16 +233,25 @@ class LinearController():
             elif direction.get_value() == DOWN.get_value():
                 selected_endstop = self._down_endstop
             
-            timeout = None
-            if calibration_timeout is True:
+            if has_timeout is True:
                 max_distance = 130
                 timeout = self._get_interval_from_distance(speed, max_distance, is_linear)
-            
-            has_reached_endstop = selected_endstop.wait_for_active(timeout)
+                timeout_timer = Timer(timeout, lambda: None)
+                timeout_timer.start()
+
+                while not selected_endstop.is_pressed and timeout_timer.is_alive():
+                    pass
+            else:
+                while not selected_endstop.is_pressed:
+                    pass
 
             self.motor_stop()
 
-            self.is_calibrated = has_reached_endstop
+            if not has_timeout:
+                self.is_calibrated = True
+            elif timeout_timer.is_alive():
+                timeout_timer.cancel()
+                self.is_calibrated = True
             
             if self.is_calibrated:
                 self.absolute_position = 0
