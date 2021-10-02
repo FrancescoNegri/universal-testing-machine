@@ -105,21 +105,18 @@ def calibrate_controller(my_controller:controller.LinearController, adjustment_p
 
 def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, speed:float, mode_button_pin:int, up_button_pin:int, down_button_pin:int):
     mode = 0
-
-    mode_button = Button(mode_button_pin)
-    up_button = Button(up_button_pin)
-    down_button = Button(down_button_pin)
-
     def switch_mode():
         nonlocal mode
         mode = 1
         return
-    
-    mode_button.when_released = switch_mode
 
+    mode_button = Button(mode_button_pin)
+    up_button = Button(up_button_pin)
+    down_button = Button(down_button_pin)
+    
+    mode_button.when_released = lambda: switch_mode()
     up_button.when_pressed = lambda: my_controller.motor_start(speed, controller.UP)
     up_button.when_released = lambda: my_controller.motor_stop()
-
     down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
     down_button.when_released = lambda: my_controller.motor_stop()
 
@@ -159,6 +156,12 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
             my_controller.motor_stop()
 
     my_loadcell.stop_reading()
+    
+    mode_button.when_released = None
+    up_button.when_pressed = None
+    up_button.when_released = None
+    down_button.when_pressed = None
+    down_button.when_released = None
     
     utility.delete_last_lines(printed_lines)
     print('Waiting for manual mode to be stopped... Done')
