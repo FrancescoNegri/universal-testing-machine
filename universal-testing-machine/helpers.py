@@ -110,9 +110,9 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
         mode = 1
         return
 
-    mode_button = Button(pin=mode_button_pin, bounce_time=0.1)
-    up_button = Button(pin=up_button_pin, bounce_time=0.1)
-    down_button = Button(pin=down_button_pin, bounce_time=0.1)
+    mode_button = Button(pin=mode_button_pin, bounce_time=0.05)
+    up_button = Button(pin=up_button_pin, bounce_time=0.05)
+    down_button = Button(pin=down_button_pin, bounce_time=0.05)
     
     mode_button.when_released = lambda: switch_mode()
     up_button.when_pressed = lambda: my_controller.motor_start(speed, controller.UP)
