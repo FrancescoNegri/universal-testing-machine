@@ -170,3 +170,43 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     print('Waiting for manual mode to be stopped... Done')
     
     return
+
+def read_test_parameters(is_cyclic:bool):
+    is_confirmed = False
+
+    while not is_confirmed:
+        cross_section = inquirer.text(
+            message='Insert the sample cross section [mm²]:',
+            validate=validator.NumberValidator(float_allowed=True)
+        ).execute()
+
+        displacement = inquirer.text(
+            message='Insert the desired displacement [mm]:',
+            validate=validator.NumberValidator(float_allowed=True)
+        ).execute()
+
+        linear_speed = inquirer.text(
+            message='Insert the desired linear speed [mm/s]:',
+            validate=validator.NumberValidator(float_allowed=True)
+        ).execute()
+
+        is_confirmed = inquirer.confirm(
+            message='Confirm?'
+        ).execute()
+
+    test_parameters = {
+        'cross_section': {
+            'value': float(cross_section),
+            'unit': 'mm²'
+        },
+        'displacement': {
+            'value': float(displacement),
+            'unit': 'mm'
+        },
+        'linear_speed': {
+            'value': float(linear_speed),
+            'unit': 'mm/s'
+        }
+    }
+
+    return test_parameters

@@ -78,5 +78,7 @@ while result is not None:
                 up_button_pin=17,
                 down_button_pin=27
             )
+
+            test_parameters = helpers.read_test_parameters(is_cyclic=False)
     elif result == 4:
         print('Not implemented yet.')
