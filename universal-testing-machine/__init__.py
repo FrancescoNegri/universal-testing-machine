@@ -80,5 +80,6 @@ while result is not None:
             )
 
             test_parameters = helpers.read_test_parameters(is_cyclic=False)
+            output_dir = helpers.create_output_dir()
     elif result == 4:
         print('Not implemented yet.')
