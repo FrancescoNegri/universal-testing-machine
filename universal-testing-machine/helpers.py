@@ -62,7 +62,7 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
     if calibrating_mass is None:
         calibrating_mass = inquirer.text(
             message='Insert the desired calibrating mass [g]:',
-            validate=validator.NumberValidator()
+            validate=validator.NumberValidator(float_allowed=True)
         ).execute()
 
     calibrating_mass = float(calibrating_mass)

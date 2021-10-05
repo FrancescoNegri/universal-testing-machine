@@ -58,7 +58,7 @@ while result is not None:
         adjustment_position = float(inquirer.text(
             message='Specify the crossbar initial position [mm]:',
             default='50',
-            validate=validator.NumberValidator()
+            validate=validator.NumberValidator(float_allowed=True)
         ).execute())
         helpers.calibrate_controller(my_controller=my_controller)
         
