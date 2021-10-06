@@ -1,4 +1,6 @@
 from InquirerPy import inquirer, validator
+from rich.console import Console
+console = Console()
 import controller
 import loadcell
 import helpers
@@ -22,12 +24,11 @@ my_loadcell = loadcell.LoadCell(
     clk_pin=6
 )
 
-print('### UNIVERSAL TESTING MACHINE ###')
+console.rule('[bold red]UNIVERSAL TESTING MACHINE')
 
 result = 0
 
 while result is not None:
-    print('\n')
     result = inquirer.select(
         message='Select a menu voice:',
         choices=[
@@ -83,3 +84,5 @@ while result is not None:
             output_dir = helpers.create_output_dir()
     elif result == 4:
         print('Not implemented yet.')
+    
+    console.rule()

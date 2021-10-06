@@ -1,6 +1,11 @@
 import os
+import math
 from statistics import mean
 from InquirerPy import inquirer, validator
+from rich import box
+from rich.console import Console
+from rich.table import Table
+console = Console()
 from datetime import datetime
 import utility
 import controller
@@ -86,23 +91,26 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
     return
 
 def calibrate_controller(my_controller:controller.LinearController):
-    print('Calibrating the crossbar...')
-    is_calibrated = my_controller.calibrate(speed=0.75, direction=controller.DOWN, is_linear=False)
-    utility.delete_last_lines(1)
+    with console.status('Calibrating the crossbar...'):
+        is_calibrated = my_controller.calibrate(speed=0.75, direction=controller.DOWN, is_linear=False)
+    
     if is_calibrated:
-        print('Calibrating the crossbar... Done')
+        console.print('[#e5c07b]>[/#e5c07b]', 'Calibrating the crossbar...', '[green]:heavy_check_mark:[/green]')
     else:
-        print('Calibrating the crossbar... FAILED')
+        console.print('[#e5c07b]>[/#e5c07b]', 'Calibrating the crossbar...', '[red]:cross_mark:[/red]')
     
     return
 
 def adjust_crossbar_position(my_controller:controller.LinearController, adjustment_position:float):
-    print('Adjusting crossbar position...')
-    my_controller.run(speed=5, distance=adjustment_position, direction=controller.UP)
-    while my_controller.is_running:
-        pass
-    utility.delete_last_lines(1)
-    print('Adjusting crossbar position... Done')
+    with console.status('Adjusting crossbar position...'):
+        my_controller.run(speed=5, distance=adjustment_position, direction=controller.UP)
+        while my_controller.is_running:
+            pass
+        
+        if abs(my_controller.absolute_position - adjustment_position) > 0.01 * adjustment_position:
+            console.print('[#e5c07b]>[/#e5c07b]', 'Adjusting crossbar position...', '[red]:cross_mark:[/red]')
+        else:
+            console.print('[#e5c07b]>[/#e5c07b]', 'Adjusting crossbar position...', '[green]:heavy_check_mark:[/green]')
 
     return
 
@@ -123,39 +131,42 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
     down_button.when_released = lambda: my_controller.motor_stop()
 
-    print('Now you are allowed to manually \nmove the crossbar up and down.')
-    print('\nWaiting for manual mode to be stopped...')
-    printed_lines = 4
-
     batch_index = 0
     batch_size = 20
     my_loadcell.start_reading()
 
-    while mode == 0:
-        if my_loadcell.is_calibrated:
-            if my_loadcell.is_batch_ready(batch_index, batch_size):
-                if printed_lines > 4:
-                    utility.delete_last_lines(printed_lines - 4)
-                    printed_lines -= printed_lines - 4
-                
-                batch, batch_index, _ = my_loadcell.get_batch(batch_index, batch_size)
+    force = '-'
+    absolute_position = '-'
 
+    console.print('[#e5c07b]>[/#e5c07b]', 'Now you are allowed to manually move the crossbar up and down.')
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for manual mode to be stopped...')
+    printed_lines = 1
+    while mode == 0:
+        if printed_lines > 1:
+            utility.delete_last_lines(printed_lines - 1)
+            printed_lines -= printed_lines - 1
+        
+        if my_loadcell.is_calibrated:
+            if my_loadcell.is_batch_ready(batch_index, batch_size):                
+                batch, batch_index, _ = my_loadcell.get_batch(batch_index, batch_size)
                 force = round(mean(batch['F']), 5)
 
-                if my_controller.is_calibrated:
-                    try:
-                        absolute_position = round(my_controller.absolute_position, 2)
-                    except:
-                        absolute_position = 0
-                    print(f'\nMeasured force: {force} N | Absolute position: {absolute_position} mm')
-                    printed_lines += 2
-                else:
-                    print(f'\nMeasured force: {force} N')
-                    printed_lines += 2
+        if my_controller.is_calibrated:
+            try:
+                absolute_position = round(my_controller.absolute_position, 2)
+            except:
+                absolute_position = '-'
+        
+        table = Table(box=box.ROUNDED)
+        table.add_column('Force', justify='center', min_width=12)
+        table.add_column('Absolute position', justify='center', min_width=20)
+        table.add_row(f'{force} N', f'{absolute_position} mm')
+        console.print(table)
+        printed_lines += 5
 
-        if down_button.is_active and my_controller._endstop_down.is_active:
+        if down_button.is_active and my_controller._down_endstop.is_active:
             my_controller.motor_stop()
-        if up_button.is_active and my_controller._endstop_up.is_active:
+        if up_button.is_active and my_controller._up_endstop.is_active:
             my_controller.motor_stop()
 
     my_loadcell.stop_reading()
@@ -167,7 +178,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     down_button.when_released = None
     
     utility.delete_last_lines(printed_lines)
-    print('Waiting for manual mode to be stopped... Done')
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for manual mode to be stopped...', '[green]:heavy_check_mark:[/green]')
     
     return
 
