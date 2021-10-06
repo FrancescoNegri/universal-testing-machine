@@ -1,4 +1,5 @@
 import controller.stepper as stepper
+import time
 from threading import Timer
 from gpiozero import Button
 
@@ -24,14 +25,15 @@ class LinearController():
 
         # Calibration & Position attributes
         self.is_calibrated = False
-        self.absolute_position = None
+        self._absolute_position = None
         self._calibration_direction = None
 
         # Running attributes
         self.is_running = False
         self._running_direction = None
         self._running_timer = None
-        self._rotational_speed = None     
+        self._rotational_speed = None   
+        self._started_at = None  
 
         # Other
         self._up_endstop = Button(pin=up_endstop_pin, bounce_time=0.05)
@@ -151,6 +153,7 @@ class LinearController():
         self._running_direction = None
         self._running_timer = None
         self._rotational_speed = None
+        self._started_at = None
 
         return
 
@@ -191,11 +194,23 @@ class LinearController():
     
     def _update_absolute_position(self, run_distance:float):
         if self._running_direction.get_value() is self._calibration_direction.get_value():
-            self.absolute_position -= run_distance
+            self._absolute_position -= run_distance
         elif self._running_direction.get_value() is not self._calibration_direction.get_value():
-            self.absolute_position += run_distance
+            self._absolute_position += run_distance
         
         return
+
+    def get_absolute_position(self):
+        if self.is_running:
+            linear_speed = self._get_linear_speed(rotational_speed=self._rotational_speed)
+            if self._running_direction.get_value() is UP.get_value():
+                absolute_position = self._absolute_position + (time.time() - self._started_at) * linear_speed
+            elif self._running_direction.get_value() is DOWN.get_value():
+                absolute_position = self._absolute_position - (time.time() - self._started_at) * linear_speed
+        else:
+            absolute_position = self._absolute_position
+
+        return absolute_position
     
     def abort(self):
         '''
@@ -254,7 +269,7 @@ class LinearController():
                 self.is_calibrated = True
             
             if self.is_calibrated:
-                self.absolute_position = 0
+                self._absolute_position = 0
                 self._calibration_direction = direction
         else:
             self.is_calibrated = False
@@ -266,7 +281,7 @@ class LinearController():
             if is_linear:
                 speed = self._get_rotational_speed(speed)
 
-            self._motor.start(speed, direction)
+            self._started_at = self._motor.start(speed, direction)
 
             self.is_running = True
             self._running_direction = direction
@@ -338,6 +353,7 @@ class LinearController():
             self.is_running = True
             self._running_direction = direction
             self._rotational_speed = speed
+            self._started_at = started_at
 
             # Set endstops check
             def handle_endstop(endstop_direction:stepper.Direction):

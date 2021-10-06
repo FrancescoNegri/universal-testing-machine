@@ -107,7 +107,7 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
         while my_controller.is_running:
             pass
         
-        if abs(my_controller.absolute_position - adjustment_position) > 0.01 * adjustment_position:
+        if abs(my_controller.get_absolute_position() - adjustment_position) > 0.01 * adjustment_position:
             console.print('[#e5c07b]>[/#e5c07b]', 'Adjusting crossbar position...', '[red]:cross_mark:[/red]')
         else:
             console.print('[#e5c07b]>[/#e5c07b]', 'Adjusting crossbar position...', '[green]:heavy_check_mark:[/green]')
@@ -153,7 +153,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
 
         if my_controller.is_calibrated:
             try:
-                absolute_position = round(my_controller.absolute_position, 2)
+                absolute_position = round(my_controller.get_absolute_position(), 2)
             except:
                 absolute_position = '-'
         
