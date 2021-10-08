@@ -82,7 +82,7 @@ while result is not None:
 
             test_parameters = helpers.read_test_parameters(is_cyclic=False)
             output_dir = helpers.create_output_dir(test_parameters)
-            # TODO: save test parameters in the output folder
+            helpers.save_test_parameters(my_loadcell, test_parameters, output_dir)
 
             helpers.start_test(
                 my_controller,

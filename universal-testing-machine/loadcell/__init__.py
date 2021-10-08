@@ -27,7 +27,7 @@ class LoadCell():
         self.is_calibrated = False
         self._slope = None
         self._y_intercept = None
-        self._tare_weight = 0
+        self._calibrating_mass = None
         self._calibration_filename = 'load_cell_calibration.json'
 
         # Reading attributes
@@ -56,16 +56,34 @@ class LoadCell():
 
         return
 
-    def _save_calibration(self, calibration_dir:str, calibrating_mass:float):
-        calibration = {
-            'slope': self._slope,
-            'y_intercept': self._y_intercept,
-            'calibrating_mass_grams': calibrating_mass,
-            'date': datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
-        }
-        
+    def _save_calibration(self, calibration_dir:str):
         with open(calibration_dir + r'/' + self._calibration_filename, 'w') as f:
-            json.dump(calibration, f)
+            json.dump(self.get_calibration(), f)
+        
+        return
+
+    def get_calibration(self):
+        if self.is_calibrated:
+            calibration = {
+                'slope': self._slope,
+                'y_intercept': self._y_intercept,
+                'calibrating_mass': {
+                    'value': self._calibrating_mass,
+                    'unit': 'g'
+                },
+                'date': datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
+            }
+        else:
+            calibration = None
+        
+        return calibration
+
+    def set_calibration(self, calibration:dict):
+        self._slope = calibration['slope']
+        self._y_intercept = calibration['y_intercept']
+        self._calibrating_mass = calibration['calibrating_mass']['value']
+        self.is_calibrated = True
+        
         return
 
     def calibrate(self, zero_raw:int, mass_raw:int, calibrating_mass:float, calibration_dir:str):
@@ -76,9 +94,10 @@ class LoadCell():
 
         self._slope = (y1 - y0) / (x1 - x0)
         self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
+        self._calibrating_mass = calibrating_mass
         self.is_calibrated = True
 
-        self._save_calibration(calibration_dir=calibration_dir, calibrating_mass=calibrating_mass)
+        self._save_calibration(calibration_dir=calibration_dir)
         return
 
     def _get_raw_data_mean(self, n_readings:int = 1, kernel_size:int = 5, fake:bool = False):

@@ -43,9 +43,7 @@ def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCel
 
             if use_existing_calibration:
                 calibration = json.load(f)
-                my_loadcell._slope = calibration['slope']
-                my_loadcell._y_intercept = calibration['y_intercept']
-                my_loadcell.is_calibrated = True
+                my_loadcell.set_calibration(calibration)
             else:
                 my_loadcell.is_calibrated = False
     except:
@@ -231,6 +229,14 @@ def read_test_parameters(is_cyclic:bool):
     }
 
     return test_parameters
+
+def save_test_parameters(my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str):
+    test_parameters['calibration'] = my_loadcell.get_calibration()
+    filename = 'test_parameters.json'
+    with open(output_dir + r'/' + filename, 'w') as f:
+        json.dump(test_parameters, f)
+
+    return
 
 def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, clamps_distance:float, output_dir:str, stop_button_pin:int, is_cyclic:bool):
     displacement = test_parameters['displacement']['value']
