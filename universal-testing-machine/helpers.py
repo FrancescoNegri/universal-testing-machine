@@ -239,74 +239,77 @@ def save_test_parameters(my_loadcell:loadcell.LoadCell, test_parameters:dict, ou
     return
 
 def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, clamps_distance:float, output_dir:str, stop_button_pin:int, is_cyclic:bool):
-    displacement = test_parameters['displacement']['value']
-    linear_speed = test_parameters['linear_speed']['value']
-    cross_section = test_parameters['cross_section']['value']
+    with console.status('Collecting data...'):
+        displacement = test_parameters['displacement']['value']
+        linear_speed = test_parameters['linear_speed']['value']
+        cross_section = test_parameters['cross_section']['value']
 
-    stop_flag = False
-    def switch_stop_flag():
-        nonlocal stop_flag
-        stop_flag = True
-        return
+        stop_flag = False
+        def switch_stop_flag():
+            nonlocal stop_flag
+            stop_flag = True
+            return
 
-    stop_button = Button(pin=stop_button_pin, bounce_time=0.05)
-    stop_button.when_released = lambda: switch_stop_flag()
+        stop_button = Button(pin=stop_button_pin, bounce_time=0.05)
+        stop_button.when_released = lambda: switch_stop_flag()
 
-    fig = plt.figure()
-    ax = plt.axes()
-    line, = ax.plot([], lw=3)
-    text = ax.text(0.8, 0.5, '')
+        fig = plt.figure()
+        ax = plt.axes()
+        line, = ax.plot([], lw=3)
+        text = ax.text(0.8, 0.5, '')
 
-    initial_gauge_length = clamps_distance + my_controller.get_absolute_position()
+        initial_gauge_length = clamps_distance + my_controller.get_absolute_position()
 
-    xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
-    ylim = 10
-    ax.set_xlim([0, xlim])
-    ax.set_ylim([0, ylim])
-    
-    fig.canvas.draw()
-    ax_background = fig.canvas.copy_from_bbox(ax.bbox)
-    plt.show(block=False)
+        xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
+        ylim = 10
+        ax.set_xlim([0, xlim])
+        ax.set_ylim([0, ylim])
+        
+        fig.canvas.draw()
+        ax_background = fig.canvas.copy_from_bbox(ax.bbox)
+        plt.show(block=False)
 
-    force = []
-    strain = []
-    batch_index = 0
-    line.set_data(strain, force)
+        force = []
+        strain = []
+        batch_index = 0
+        line.set_data(strain, force)
 
-    _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
-    my_loadcell.start_reading()
+        _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
+        my_loadcell.start_reading()
 
-    while my_controller.is_running:
-        if stop_flag:
-            my_controller.abort()
-        else:
-            if my_loadcell.is_batch_ready(batch_index):
-                batch, batch_index = my_loadcell.get_batch(batch_index)
-                batch['t'] = batch['t'] - t0
-
-                strains = (batch['t'] * linear_speed / initial_gauge_length) * 100     # in percentage
-
-                force.extend(batch['F'])
-                strain.extend(strains)
-
-                line.set_data(strain, force)
-
-                # restore background
-                fig.canvas.restore_region(ax_background)
-
-                # redraw just the points
-                ax.draw_artist(line)
-                ax.draw_artist(text)
-
-                # fill in the axes rectangle
-                fig.canvas.blit(ax.bbox)
-
-                # in this post http://bastibe.de/2013-05-30-speeding-up-matplotlib.html
-                # it is mentionned that blit causes strong memory leakage.
-                # however, I did not observe that.
-                fig.canvas.flush_events()
+        while my_controller.is_running:
+            if stop_flag:
+                my_controller.abort()
             else:
-                pass
+                if my_loadcell.is_batch_ready(batch_index):
+                    batch, batch_index = my_loadcell.get_batch(batch_index)
+                    batch['t'] = batch['t'] - t0
+
+                    strains = (batch['t'] * linear_speed / initial_gauge_length) * 100     # in percentage
+
+                    force.extend(batch['F'])
+                    strain.extend(strains)
+
+                    line.set_data(strain, force)
+
+                    # restore background
+                    fig.canvas.restore_region(ax_background)
+
+                    # redraw just the points
+                    ax.draw_artist(line)
+                    ax.draw_artist(text)
+
+                    # fill in the axes rectangle
+                    fig.canvas.blit(ax.bbox)
+
+                    # in this post http://bastibe.de/2013-05-30-speeding-up-matplotlib.html
+                    # it is mentionned that blit causes strong memory leakage.
+                    # however, I did not observe that.
+                    fig.canvas.flush_events()
+                else:
+                    pass
+
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
     data = my_loadcell.stop_reading()
     stop_button.when_released = None
