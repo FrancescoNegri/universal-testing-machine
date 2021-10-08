@@ -114,21 +114,16 @@ class LoadCell():
         
         self._reset_reading_attributes()
         
-        if self.is_calibrated:
-            weights = self._slope * readings + self._y_intercept
-            forces = (weights / 1000) * 9.81
-            data = {'t': timings, 'F': forces}
-            is_force = True
-        else:
-            data = {'t': timings, 'raw': readings}
-            is_force = False
+        weights = self._slope * readings + self._y_intercept
+        forces = (weights / 1000) * 9.81
+        data = {'t': timings, 'F': forces}
 
         # TODO: eventualmente aggiungere qui vari filtri e post elaborazione dei dati
         
         df = pd.DataFrame.from_dict(data, orient='index')
         df = df.transpose()
 
-        return df, is_force
+        return df
 
     def _read(self):
         while self._is_reading:
@@ -143,8 +138,11 @@ class LoadCell():
         return
 
     def is_batch_ready(self, batch_index:int, batch_size:int = 5):
-        if len(self._readings) - batch_index >= batch_size:
-            return True
+        if self._readings is not None:
+            if len(self._readings) - batch_index >= batch_size:
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -169,13 +167,8 @@ class LoadCell():
         
         batch = scipy.signal.medfilt(batch, kernel_size)
 
-        if self.is_calibrated:
-            batch = self._slope * batch + self._y_intercept
-            batch = (batch / 1000) * 9.81
-            batch = pd.DataFrame({'t': batch_timings, 'F': batch})
-            is_force = True
-        else:
-            batch = pd.DataFrame({'t': batch_timings, 'raw': batch})
-            is_force = False
+        batch = self._slope * batch + self._y_intercept
+        batch = (batch / 1000) * 9.81
+        batch = pd.DataFrame({'t': batch_timings, 'F': batch})
 
-        return batch, batch_index, is_force
+        return batch, batch_index

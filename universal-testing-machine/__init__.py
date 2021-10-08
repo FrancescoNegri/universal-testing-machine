@@ -81,7 +81,18 @@ while result is not None:
             )
 
             test_parameters = helpers.read_test_parameters(is_cyclic=False)
-            output_dir = helpers.create_output_dir()
+            output_dir = helpers.create_output_dir(test_parameters)
+            # TODO: save test parameters in the output folder
+
+            helpers.start_test(
+                my_controller,
+                my_loadcell,
+                test_parameters,
+                clamps_distance=9.15,
+                output_dir=output_dir,
+                stop_button_pin=22,
+                is_cyclic=False
+            )
     elif result == 4:
         print('Not implemented yet.')
     
