@@ -10,6 +10,7 @@ import utility
 import controller
 import loadcell
 import json
+import scipy.signal
 from gpiozero import Button
 import matplotlib.pyplot as plt
 
@@ -29,6 +30,12 @@ def create_output_dir(test_parameters:dict):
 
     test_id = test_parameters['test_id']
     output_dir = os.path.join(dir, path, test_id)
+    copy_idx = ''
+    idx = 0
+    while os.path.isdir(output_dir + copy_idx):
+        idx = idx + 1
+        copy_idx = '(' + str(idx) + ')'
+    output_dir = output_dir + copy_idx
     os.makedirs(output_dir)
 
     return output_dir
@@ -181,7 +188,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def read_test_parameters(is_cyclic:bool):
+def read_test_parameters(default_clamps_distance:float, is_cyclic:bool):
     is_confirmed = False
 
     while not is_confirmed:
@@ -198,6 +205,12 @@ def read_test_parameters(is_cyclic:bool):
         linear_speed = inquirer.text(
             message='Insert the desired linear speed [mm/s]:',
             validate=validator.NumberValidator(float_allowed=True)
+        ).execute()
+
+        clamps_distance = inquirer.text(
+            message='Insert the clamps distance [mm]:',
+            validate=validator.NumberValidator(float_allowed=True),
+            default=str(default_clamps_distance)
         ).execute()
 
         default_test_id = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
@@ -226,24 +239,34 @@ def read_test_parameters(is_cyclic:bool):
         'linear_speed': {
             'value': float(linear_speed),
             'unit': 'mm/s'
+        },
+        'clamps_distance': {
+            'value': float(clamps_distance),
+            'unit': 'mm'
         }
     }
 
     return test_parameters
 
-def save_test_parameters(my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str):
+def save_test_parameters(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str):
     test_parameters['calibration'] = my_loadcell.get_calibration()
+    test_parameters['initial_gauge_length'] = {
+        'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
+        'unit': 'mm'
+    }
+
     filename = 'test_parameters.json'
     with open(output_dir + r'/' + filename, 'w') as f:
         json.dump(test_parameters, f)
 
     return
 
-def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, clamps_distance:float, output_dir:str, stop_button_pin:int, is_cyclic:bool):
+def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int, is_cyclic:bool):
     with console.status('Collecting data...'):
         displacement = test_parameters['displacement']['value']
         linear_speed = test_parameters['linear_speed']['value']
         cross_section = test_parameters['cross_section']['value']
+        initial_gauge_length = test_parameters['initial_gauge_length']['value']
 
         stop_flag = False
         def switch_stop_flag():
@@ -258,8 +281,6 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
         ax = plt.axes()
         line, = ax.plot([], lw=3)
         text = ax.text(0.8, 0.5, '')
-
-        initial_gauge_length = clamps_distance + my_controller.get_absolute_position()
 
         xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
         ylim = 10
@@ -319,8 +340,10 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
         data['t'] = data['t'] - t0
         data['displacement'] = data['t'] * linear_speed
         data['F_raw'] = data['F']
+        data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
         data['stress_raw'] = data['F_raw'] / cross_section
-        data['strain'] = data['t'] * linear_speed / initial_gauge_length
+        data['stress_med20'] = data['F_med20'] / cross_section
+        data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
 
         filename = test_parameters['test_id'] + '.csv'
         data.to_csv(output_dir + r'/' + filename, index=False)
