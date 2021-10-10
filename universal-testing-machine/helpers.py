@@ -167,7 +167,8 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
         if up_button.is_active and my_controller._up_endstop.is_active:
             my_controller.motor_stop()
 
-    my_loadcell.stop_reading()
+    if my_loadcell.is_calibrated:
+        my_loadcell.stop_reading()
     
     mode_button.when_released = None
     up_button.when_pressed = None
