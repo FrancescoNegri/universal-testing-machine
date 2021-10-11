@@ -176,12 +176,6 @@ class LoadCell():
         for i in range(len(batch)):
             reading = batch[i]
             if abs(reading) > abs(batch_median) * (1 + reading_tolerance) or abs(reading) < abs(batch_median) * (1 - reading_tolerance):
-                print('batch:')
-                print(batch)
-                print('batch[i]:')
-                print(batch[i])
-                print('batch median:')
-                print(batch_median)
                 batch[i] = batch_median
         
         batch = scipy.signal.medfilt(batch, kernel_size)
