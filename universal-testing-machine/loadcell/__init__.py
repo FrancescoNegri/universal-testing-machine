@@ -148,8 +148,8 @@ class LoadCell():
         while self._is_reading:
             try:
                 #HACK#
-                # self._readings.append(self._hx711._read())
-                self._readings.append(read_placeholder())
+                self._readings.append(self._hx711._read())
+                # self._readings.append(read_placeholder())
                 self._timings.append(time.time())
             except:
                 pass
