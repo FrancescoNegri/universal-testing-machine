@@ -36,8 +36,8 @@ class LinearController():
         self._started_at = None  
 
         # Other
-        self._up_endstop = Button(pin=up_endstop_pin, bounce_time=0.05)
-        self._down_endstop = Button(pin=down_endstop_pin, bounce_time=0.05)   
+        self._up_endstop = Button(pin=up_endstop_pin)
+        self._down_endstop = Button(pin=down_endstop_pin)   
 
     def _get_interval_from_distance(self, speed:float, distance:float, is_linear:bool=True):
         '''
