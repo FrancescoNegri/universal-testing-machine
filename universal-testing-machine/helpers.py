@@ -130,7 +130,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     up_button = Button(pin=up_button_pin)
     down_button = Button(pin=down_button_pin)
     
-    mode_button.when_pressed = lambda: switch_mode()
+    mode_button.when_released = lambda: switch_mode()
     up_button.when_pressed = lambda: my_controller.motor_start(speed, controller.UP)
     up_button.when_released = lambda: my_controller.motor_stop()
     down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
@@ -138,7 +138,8 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
 
     batch_index = 0
     batch_size = 20
-    my_loadcell.start_reading()
+    if my_loadcell.is_calibrated:
+        my_loadcell.start_reading()
 
     force = '-'
     absolute_position = '-'
