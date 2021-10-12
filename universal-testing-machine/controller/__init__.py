@@ -1,16 +1,16 @@
-import stepper
+import controller.stepper as stepper
+import time
 from threading import Timer
 from gpiozero import Button
 
 UP = stepper.CW
 DOWN = stepper.CCW
 
-
 class LinearController():
     '''
     Class controlling a stepper motor (rotational) from a linear point of view.
     '''
-    def __init__(self, motor:stepper.StepperMotor, screw_pitch:float, pin_end_up:int, pin_end_down:int):
+    def __init__(self, motor:stepper.StepperMotor, screw_pitch:float, up_endstop_pin:int, down_endstop_pin:int):
         '''
         Parameters
         ----------
@@ -25,18 +25,19 @@ class LinearController():
 
         # Calibration & Position attributes
         self.is_calibrated = False
-        self.absolute_position = None
+        self._absolute_position = None
         self._calibration_direction = None
 
         # Running attributes
         self.is_running = False
         self._running_direction = None
         self._running_timer = None
-        self._rotational_speed = None     
+        self._rotational_speed = None   
+        self._started_at = None  
 
         # Other
-        self._endstop_up = Button(pin_end_up)
-        self._endstop_down = Button(pin_end_down)   
+        self._up_endstop = Button(pin=up_endstop_pin)
+        self._down_endstop = Button(pin=down_endstop_pin)   
 
     def _get_interval_from_distance(self, speed:float, distance:float, is_linear:bool=True):
         '''
@@ -152,6 +153,7 @@ class LinearController():
         self._running_direction = None
         self._running_timer = None
         self._rotational_speed = None
+        self._started_at = None
 
         return
 
@@ -178,6 +180,12 @@ class LinearController():
 
             # Reset running attributes
             self._reset_running_attributes()
+
+            # Disable endstops
+            if self._up_endstop.when_pressed is not None:
+                self._up_endstop.when_pressed = None
+            if self._down_endstop.when_pressed is not None:
+                self._down_endstop.when_pressed = None            
         else:
             run_interval = None
             run_distance = None
@@ -185,25 +193,24 @@ class LinearController():
         return run_interval, run_distance
     
     def _update_absolute_position(self, run_distance:float):
-        # if self._running_direction.get_value() == UP.get_value():
-        #     if self._calibration_direction.get_value() == UP.get_value():
-        #         self.absolute_position -= run_distance
-
-        #     elif self._calibration_direction.get_value() == DOWN.get_value():
-        #         self.absolute_position += run_distance
-
-        # elif self._running_direction.get_value() == DOWN.get_value():
-        #     if self._calibration_direction.get_value() == UP.get_value():
-        #         self.absolute_position += run_distance
-
-        #     elif self._calibration_direction.get_value() == DOWN.get_value():
-        #         self.absolute_position -= run_distance
-
         if self._running_direction.get_value() is self._calibration_direction.get_value():
-            self.absolute_position -= run_distance
+            self._absolute_position -= run_distance
         elif self._running_direction.get_value() is not self._calibration_direction.get_value():
-            self.absolute_position += run_distance
+            self._absolute_position += run_distance
+        
         return
+
+    def get_absolute_position(self):
+        if self.is_running:
+            linear_speed = self._get_linear_speed(rotational_speed=self._rotational_speed)
+            if self._running_direction.get_value() is UP.get_value():
+                absolute_position = self._absolute_position + (time.time() - self._started_at) * linear_speed
+            elif self._running_direction.get_value() is DOWN.get_value():
+                absolute_position = self._absolute_position - (time.time() - self._started_at) * linear_speed
+        else:
+            absolute_position = self._absolute_position
+
+        return absolute_position
     
     def abort(self):
         '''
@@ -230,30 +237,39 @@ class LinearController():
 
         return run_interval, run_distance
     
-    def calibrate(self, speed:float, direction:stepper.Direction = DOWN, is_linear:bool=True, calibration_timeout:bool = True):
+    def calibrate(self, speed:float, direction:stepper.Direction = DOWN, is_linear:bool=True, has_timeout:bool = True):
         self.is_calibrated = False
         
         if not self.is_running:
             self.motor_start(speed, direction, is_linear)
 
             if direction.get_value() == UP.get_value():
-                selected_endstop = self._endstop_up
+                selected_endstop = self._up_endstop
             elif direction.get_value() == DOWN.get_value():
-                selected_endstop = self._endstop_down
+                selected_endstop = self._down_endstop
             
-            timeout = None
-            if calibration_timeout is True:
+            if has_timeout is True:
                 max_distance = 130
                 timeout = self._get_interval_from_distance(speed, max_distance, is_linear)
-            
-            has_reached_endstop = selected_endstop.wait_for_active(timeout)
+                timeout_timer = Timer(timeout, lambda: None)
+                timeout_timer.start()
+
+                while not selected_endstop.is_pressed and timeout_timer.is_alive():
+                    pass
+            else:
+                while not selected_endstop.is_pressed:
+                    pass
 
             self.motor_stop()
 
-            self.is_calibrated = has_reached_endstop
-
+            if not has_timeout:
+                self.is_calibrated = True
+            elif timeout_timer.is_alive():
+                timeout_timer.cancel()
+                self.is_calibrated = True
+            
             if self.is_calibrated:
-                self.absolute_position = 0
+                self._absolute_position = 0
                 self._calibration_direction = direction
         else:
             self.is_calibrated = False
@@ -265,7 +281,7 @@ class LinearController():
             if is_linear:
                 speed = self._get_rotational_speed(speed)
 
-            self._motor.start(speed, direction)
+            self._started_at = self._motor.start(speed, direction)
 
             self.is_running = True
             self._running_direction = direction
@@ -337,6 +353,18 @@ class LinearController():
             self.is_running = True
             self._running_direction = direction
             self._rotational_speed = speed
+            self._started_at = started_at
+
+            # Set endstops check
+            def handle_endstop(endstop_direction:stepper.Direction):
+                nonlocal self
+                if self.is_calibrated:
+                    if self._running_direction.get_value() == endstop_direction.get_value():
+                        self.abort()
+                return
+
+            self._up_endstop.when_pressed = lambda: handle_endstop(UP)
+            self._down_endstop.when_pressed = lambda: handle_endstop(DOWN)
         else:
             print('The motor is already running')
             interval = None
