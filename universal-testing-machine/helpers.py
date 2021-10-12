@@ -188,7 +188,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def read_test_parameters(default_clamps_distance:float, is_cyclic:bool):
+def read_test_parameters(test_type:bool, default_clamps_distance:float):
     is_confirmed = False
 
     while not is_confirmed:
@@ -228,6 +228,7 @@ def read_test_parameters(default_clamps_distance:float, is_cyclic:bool):
 
     test_parameters = {
         'test_id': test_id,
+        'test_type': test_type,
         'cross_section': {
             'value': float(cross_section),
             'unit': 'mm²'
@@ -261,7 +262,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
 
     return
 
-def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int, is_cyclic:bool):
+def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
     with console.status('Collecting data...'):
         displacement = test_parameters['displacement']['value']
         linear_speed = test_parameters['linear_speed']['value']
