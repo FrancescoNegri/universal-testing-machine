@@ -189,73 +189,82 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def read_test_parameters(test_type:bool, default_clamps_distance:float):
+def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
     is_confirmed = False
 
+    timestamp = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
+    test_parameters = {
+        'test_id': timestamp,
+        'test_type': test_type,
+        'date': timestamp
+    }
+
     while not is_confirmed:
-        cross_section = inquirer.text(
-            message='Insert the sample cross section [mm²]:',
-            validate=validator.NumberValidator(float_allowed=True)
-        ).execute()
+        if test_type is 'monotonic':        
+            test_parameters['cross_section'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the sample cross section [mm²]:',
+                        validate=validator.NumberValidator(float_allowed=True)
+                    ).execute()
+                ),
+                'unit': 'mm²'
+            }
 
-        displacement = inquirer.text(
-            message='Insert the desired displacement [mm]:',
-            validate=validator.NumberValidator(float_allowed=True)
-        ).execute()
+            test_parameters['displacement'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the desired displacement [mm]:',
+                        validate=validator.NumberValidator(float_allowed=True)
+                    ).execute()
+                ),
+                'unit': 'mm'
+            }
 
-        linear_speed = inquirer.text(
-            message='Insert the desired linear speed [mm/s]:',
-            validate=validator.NumberValidator(float_allowed=True)
-        ).execute()
+            test_parameters['linear_speed'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the desired linear speed [mm/s]:',
+                        validate=validator.NumberValidator(float_allowed=True)
+                    ).execute()
+                ),
+                'unit': 'mm/s'
+            }
 
-        clamps_distance = inquirer.text(
-            message='Insert the clamps distance [mm]:',
-            validate=validator.NumberValidator(float_allowed=True),
-            default=str(default_clamps_distance)
-        ).execute()
+            test_parameters['clamps_distance'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the clamps distance [mm]:',
+                        validate=validator.NumberValidator(float_allowed=True),
+                        default=str(default_clamps_distance)
+                    ).execute()
+                ),
+                'unit': 'mm'
+            }
 
-        default_test_id = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
-        test_id = inquirer.text(
+        test_parameters['test_id'] = inquirer.text(
             message='Insert the ID for this session:',
             validate=validator.EmptyInputValidator(),
             transformer=lambda result: ' '.join(result.split()).replace(' ', '_'),
             filter=lambda result: ' '.join(result.split()).replace(' ', '_'),
-            default=default_test_id
+            default=timestamp
         ).execute()
 
         is_confirmed = inquirer.confirm(
             message='Confirm?'
         ).execute()
 
-    test_parameters = {
-        'test_id': test_id,
-        'test_type': test_type,
-        'cross_section': {
-            'value': float(cross_section),
-            'unit': 'mm²'
-        },
-        'displacement': {
-            'value': float(displacement),
-            'unit': 'mm'
-        },
-        'linear_speed': {
-            'value': float(linear_speed),
-            'unit': 'mm/s'
-        },
-        'clamps_distance': {
-            'value': float(clamps_distance),
-            'unit': 'mm'
-        }
-    }
-
     return test_parameters
 
 def save_test_parameters(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str):
-    test_parameters['calibration'] = my_loadcell.get_calibration()
-    test_parameters['initial_gauge_length'] = {
-        'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
-        'unit': 'mm'
-    }
+    if my_loadcell.is_calibrated:
+        test_parameters['calibration'] = my_loadcell.get_calibration()
+    
+    if my_controller.is_calibrated and test_parameters['test_type'] is 'monotonic':
+        test_parameters['initial_gauge_length'] = {
+            'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
+            'unit': 'mm'
+        }
 
     filename = 'test_parameters.json'
     with open(output_dir + r'/' + filename, 'w') as f:
