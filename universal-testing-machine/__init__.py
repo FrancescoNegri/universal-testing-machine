@@ -80,7 +80,7 @@ while result is not None:
                 down_button_pin=27
             )
 
-            test_parameters = helpers.read_test_parameters(default_clamps_distance=9.15, is_cyclic=False)
+            test_parameters = helpers.read_test_parameters(test_type='monotonic', default_clamps_distance=9.15)
             output_dir = helpers.create_output_dir(test_parameters)
             helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
 
@@ -89,8 +89,7 @@ while result is not None:
                 my_loadcell,
                 test_parameters,
                 output_dir=output_dir,
-                stop_button_pin=22,
-                is_cyclic=False
+                stop_button_pin=22
             )
     elif result == 4:
         print('Not implemented yet.')

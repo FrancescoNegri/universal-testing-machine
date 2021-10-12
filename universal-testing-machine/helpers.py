@@ -138,7 +138,8 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
 
     batch_index = 0
     batch_size = 20
-    my_loadcell.start_reading()
+    if my_loadcell.is_calibrated:
+        my_loadcell.start_reading()
 
     force = '-'
     absolute_position = '-'
@@ -188,7 +189,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def read_test_parameters(default_clamps_distance:float, is_cyclic:bool):
+def read_test_parameters(test_type:bool, default_clamps_distance:float):
     is_confirmed = False
 
     while not is_confirmed:
@@ -228,6 +229,7 @@ def read_test_parameters(default_clamps_distance:float, is_cyclic:bool):
 
     test_parameters = {
         'test_id': test_id,
+        'test_type': test_type,
         'cross_section': {
             'value': float(cross_section),
             'unit': 'mm²'
@@ -261,7 +263,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
 
     return
 
-def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int, is_cyclic:bool):
+def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
     with console.status('Collecting data...'):
         displacement = test_parameters['displacement']['value']
         linear_speed = test_parameters['linear_speed']['value']
@@ -344,6 +346,8 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
         data['stress_raw'] = data['F_raw'] / cross_section
         data['stress_med20'] = data['F_med20'] / cross_section
         data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
+        data.loc[data.index[0], 'cross_section'] = cross_section
+        data.loc[data.index[0], 'initial_gauge_length'] = initial_gauge_length
 
         filename = test_parameters['test_id'] + '.csv'
         data.to_csv(output_dir + r'/' + filename, index=False)
