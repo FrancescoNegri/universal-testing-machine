@@ -344,6 +344,8 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
         data['stress_raw'] = data['F_raw'] / cross_section
         data['stress_med20'] = data['F_med20'] / cross_section
         data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
+        data.loc[data.index[0], 'cross_section'] = cross_section
+        data.loc[data.index[0], 'initial_gauge_length'] = initial_gauge_length
 
         filename = test_parameters['test_id'] + '.csv'
         data.to_csv(output_dir + r'/' + filename, index=False)
