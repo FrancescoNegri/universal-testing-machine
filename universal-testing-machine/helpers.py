@@ -297,6 +297,8 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         ylim = 10
         ax.set_xlim([0, xlim])
         ax.set_ylim([0, ylim])
+        ax.set_xlabel('Strain (%)')
+        ax.set_ylabel('Force (N)')
         
         fig.canvas.draw()
         ax_background = fig.canvas.copy_from_bbox(ax.bbox)
