@@ -272,7 +272,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
 
     return
 
-def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
+def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
     with console.status('Collecting data...'):
         displacement = test_parameters['displacement']['value']
         linear_speed = test_parameters['linear_speed']['value']
@@ -346,20 +346,38 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
 
     data = my_loadcell.stop_reading()
     stop_button.when_released = None
-    
-    with console.status('Saving test data...'):
-        data['t'] = data['t'] - t0
-        data['displacement'] = data['t'] * linear_speed
-        data['F_raw'] = data['F']
-        data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
-        data['stress_raw'] = data['F_raw'] / cross_section
-        data['stress_med20'] = data['F_med20'] / cross_section
-        data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
-        data.loc[data.index[0], 'cross_section'] = cross_section
-        data.loc[data.index[0], 'initial_gauge_length'] = initial_gauge_length
 
+    data['t'] = data['t'] - t0
+    data['displacement'] = data['t'] * linear_speed
+    data['F_raw'] = data['F']
+    data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
+    data['stress_raw'] = data['F_raw'] / cross_section
+    data['stress_med20'] = data['F_med20'] / cross_section
+    data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
+    data.loc[data.index[0], 'cross_section'] = cross_section
+    data.loc[data.index[0], 'initial_gauge_length'] = initial_gauge_length
+
+    return data
+
+def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
+    data = None
+
+    if test_parameters['test_type'] is 'monotonic':
+        data = _start_monotonic_test(
+            my_controller=my_controller,
+            my_loadcell=my_loadcell,
+            test_parameters=test_parameters,
+            stop_button_pin=stop_button_pin
+        )
+    elif test_parameters['test_type'] is 'cyclic':
+        pass
+    elif test_parameters['test_type'] is 'static':
+        pass
+
+    with console.status('Saving test data...'):
         filename = test_parameters['test_id'] + '.csv'
-        data.to_csv(output_dir + r'/' + filename, index=False)
+        if data is not None:
+            data.to_csv(output_dir + r'/' + filename, index=False)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...', '[green]:heavy_check_mark:[/green]')
     
