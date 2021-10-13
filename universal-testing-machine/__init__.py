@@ -36,6 +36,7 @@ while result is not None:
                 {'name': 'Manual Control', 'value': 'manual'},
                 {'name': 'Monotonic Test', 'value': 'monotonic'},
                 {'name': 'Cyclic Test', 'value': 'cyclic'},
+                {'name': 'Static Test', 'value': 'static'},
                 {'name': 'Exit', 'value': None}
         ],
         default='monotonic'
@@ -93,5 +94,23 @@ while result is not None:
             )
     elif result is 'cyclic':
         print('Not implemented yet.')
+    elif result is 'static':
+        calibration_dir = helpers.create_calibration_dir()
+        helpers.check_existing_calibration(calibration_dir, my_loadcell)
+        if my_loadcell.is_calibrated is not True:
+            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+        
+        helpers.start_manual_mode(
+                my_controller,
+                my_loadcell,
+                speed=1,
+                mode_button_pin=22,
+                up_button_pin=17,
+                down_button_pin=27
+            )
+
+        test_parameters = helpers.read_test_parameters(test_type=result)
+        output_dir = helpers.create_output_dir(test_parameters)
+        helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
     
     console.rule()
