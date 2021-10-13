@@ -155,7 +155,7 @@ class LoadCell():
 
         return
 
-    def is_batch_ready(self, batch_index:int, batch_size:int = 5):
+    def is_batch_ready(self, batch_index:int, batch_size:int = 15):
         if self._readings is not None:
             if len(self._readings) - batch_index >= batch_size:
                 return True
