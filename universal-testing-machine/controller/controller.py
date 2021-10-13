@@ -375,8 +375,9 @@ class LinearController():
     def hold_torque(self):
         self._motor.hold_torque()
         self.is_running = True
+        self._started_at = time.time()
 
-        return
+        return self._started_at
 
     def release_torque(self):
         self._motor.release_torque()
