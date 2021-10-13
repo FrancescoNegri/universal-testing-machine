@@ -1,8 +1,8 @@
 from InquirerPy import inquirer, validator
 from rich.console import Console
 console = Console()
-import controller
-import loadcell
+from controller import controller
+from loadcell import loadcell
 import helpers
 
 my_controller = controller.LinearController(
