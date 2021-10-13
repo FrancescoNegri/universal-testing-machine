@@ -6,9 +6,9 @@ from rich.console import Console
 from rich.table import Table
 console = Console()
 from datetime import datetime
-import utility
-import controller
-import loadcell
+from utility import utility
+from controller import controller
+from loadcell import loadcell
 import json
 import scipy.signal
 from gpiozero import Button
