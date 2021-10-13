@@ -312,3 +312,13 @@ class StepperMotor():
         else:
             running_interval = None
         return running_interval
+
+    def hold_torque(self):
+        self._pi.write(self._en_pin, 0)
+
+        return
+
+    def release_torque(self):
+        self._pi.write(self._en_pin, 1)
+
+        return

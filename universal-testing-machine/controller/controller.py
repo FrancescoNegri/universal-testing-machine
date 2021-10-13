@@ -372,6 +372,14 @@ class LinearController():
         
         return interval, distance, started_at
 
-    def run_to(self):
-        # run to a specified absolute point
+    def hold_torque(self):
+        self._motor.hold_torque()
+        self.is_running = True
+
+        return
+
+    def release_torque(self):
+        self._motor.release_torque()
+        self._reset_running_attributes()
+
         return
