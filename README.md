@@ -7,11 +7,11 @@ A Raspberry Pi based Universal Testing Machine to perform a number of tasks rela
 - [Universal Testing Machine](#universal-testing-machine)
   - [Table of Contents](#table-of-contents)
   - [Installation & Usage](#installation--usage)
-  - [Software](#software)
+  - [Software Features](#software-features)
     - [Monotonic Test](#monotonic-test)
     - [Cyclic Test](#cyclic-test)
     - [Static Test](#static-test)
-  - [Hardware](#hardware)
+  - [Hardware List](#hardware-list)
 
 Requirements
 
@@ -39,7 +39,7 @@ git clone https://github.com/FrancescoNegri/universal-testing-machine.git
 cd universal-testing-machine
 ```
 
-## Software
+## Software Features
 
 This software allows for three different types of test.
 
@@ -55,6 +55,8 @@ Not implemented yet.
 
 Under development.
 
-## Hardware
+## Hardware List
 
-Available soon.
+The software running this project is fully parametric, therefore the connections between the required devices and the Raspberry Pi are not reported here. However, a full list summarizing all the necessary components to run the universal testing machine through the code provided in this repo is available below:
+
+Soon available.
