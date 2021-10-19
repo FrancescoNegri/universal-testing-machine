@@ -38,7 +38,7 @@ Clone this project **on your Raspberry Pi** and move into the main directory:
 git clone https://github.com/FrancescoNegri/universal-testing-machine.git
 cd universal-testing-machine/
 ```
-The program can simply be runned by launching the command below:
+The program can be easily launched with this command:
 ```sh
 python3 universal-testing-machine/
 ```
