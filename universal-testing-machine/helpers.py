@@ -361,6 +361,86 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
 
     return data
 
+def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
+    with console.status('Collecting data...'):
+        stop_flag = False
+        def switch_stop_flag():
+            nonlocal stop_flag
+            stop_flag = True
+            return
+
+        stop_button = Button(pin=stop_button_pin)
+        stop_button.when_released = lambda: switch_stop_flag()
+
+        fig = plt.figure()
+        ax = plt.axes()
+        line, = ax.plot([], lw=3)
+        text = ax.text(0.8, 0.5, '')
+
+        xlim = 30 # in seconds
+        ylim = 10
+        ax.set_xlim([0, xlim])
+        ax.set_ylim([0, ylim])
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Force (N)')
+        
+        fig.canvas.draw()
+        ax_background = fig.canvas.copy_from_bbox(ax.bbox)
+        plt.show(block=False)
+
+        force = []
+        time = []
+        batch_index = 0
+        line.set_data(time, force)
+
+        t0 = my_controller.hold_torque()
+        my_loadcell.start_reading()
+
+        while my_controller.is_running:
+            if stop_flag:
+                my_controller.release_torque()
+            else:
+                if my_loadcell.is_batch_ready(batch_index):
+                    batch, batch_index = my_loadcell.get_batch(batch_index)
+                    batch['t'] = batch['t'] - t0
+
+                    force.extend(batch['F'])
+                    time.extend(batch['t'])
+
+                    if batch['t'].iloc[-1] > xlim:
+                        ax.set_xlim([(xlim / 2), (xlim / 2) + batch['t'].iloc[-1]])
+                        xlim = (xlim / 2) + batch['t'].iloc[-1]
+
+                    line.set_data(time, force)
+
+                    # restore background
+                    fig.canvas.restore_region(ax_background)
+
+                    # redraw just the points
+                    ax.draw_artist(line)
+                    ax.draw_artist(text)
+
+                    # fill in the axes rectangle
+                    fig.canvas.blit(ax.bbox)
+
+                    # in this post http://bastibe.de/2013-05-30-speeding-up-matplotlib.html
+                    # it is mentionned that blit causes strong memory leakage.
+                    # however, I did not observe that.
+                    fig.canvas.flush_events()
+                else:
+                    pass
+
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
+
+    data = my_loadcell.stop_reading()
+    stop_button.when_released = None
+
+    data['t'] = data['t'] - t0
+    data['F_raw'] = data['F']
+    data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
+
+    return data
+
 def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
     data = None
 
@@ -374,7 +454,11 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
     elif test_parameters['test_type'] is 'cyclic':
         pass
     elif test_parameters['test_type'] is 'static':
-        pass
+        data = _start_static_test(
+            my_controller=my_controller,
+            my_loadcell=my_loadcell,
+            stop_button_pin=stop_button_pin
+        )
 
     with console.status('Saving test data...'):
         filename = test_parameters['test_id'] + '.csv'
