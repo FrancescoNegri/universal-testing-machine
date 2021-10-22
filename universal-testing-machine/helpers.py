@@ -372,10 +372,13 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
         stop_button = Button(pin=stop_button_pin)
         stop_button.when_released = lambda: switch_stop_flag()
 
+        forces = []
+        timings = []
+        batch_index = 0
+
         fig = plt.figure()
         ax = plt.axes()
-        line, = ax.plot([], lw=3)
-        text = ax.text(0.8, 0.5, '')
+        line, = ax.plot(timings, forces, lw=3)
 
         xlim = 30 # in seconds
         ylim = 10
@@ -383,15 +386,10 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
         ax.set_ylim([0, ylim])
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Force (N)')
+        ax.set_title('Force vs. Time')
         
         fig.canvas.draw()
-        ax_background = fig.canvas.copy_from_bbox(ax.bbox)
         plt.show(block=False)
-
-        force = []
-        time = []
-        batch_index = 0
-        line.set_data(time, force)
 
         t0 = my_controller.hold_torque()
         my_loadcell.start_reading()
@@ -400,25 +398,21 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
             if stop_flag:
                 my_controller.release_torque()
             else:
-                if my_loadcell.is_batch_ready(batch_index):
+                while my_loadcell.is_batch_ready(batch_index):
                     batch, batch_index = my_loadcell.get_batch(batch_index)
                     batch['t'] = batch['t'] - t0
 
-                    force.extend(batch['F'])
-                    time.extend(batch['t'])
+                    forces.extend(batch['F'])
+                    timings.extend(batch['t'])
 
                     if batch['t'].iloc[-1] > xlim:
                         ax.set_xlim([(xlim / 2), (xlim / 2) + batch['t'].iloc[-1]])
                         xlim = (xlim / 2) + batch['t'].iloc[-1]
 
-                    line.set_data(time, force)
-
-                    # restore background
-                    fig.canvas.restore_region(ax_background)
+                    line.set_data(timings, forces)
 
                     # redraw just the points
-                    ax.draw_artist(line)
-                    ax.draw_artist(text)
+                    ax.redraw_in_frame()
 
                     # fill in the axes rectangle
                     fig.canvas.blit(ax.bbox)
