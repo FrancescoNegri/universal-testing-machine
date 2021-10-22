@@ -288,10 +288,13 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         stop_button = Button(pin=stop_button_pin)
         stop_button.when_released = lambda: switch_stop_flag()
 
+        forces = []
+        strains = []
+        batch_index = 0
+
         fig = plt.figure()
         ax = plt.axes()
-        line, = ax.plot([], lw=3)
-        text = ax.text(0.8, 0.5, '')
+        line, = ax.plot(forces, strains, lw=3)
 
         xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
         ylim = 10
@@ -299,15 +302,10 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         ax.set_ylim([0, ylim])
         ax.set_xlabel('Strain (%)')
         ax.set_ylabel('Force (N)')
+        ax.set_title('Force vs. Strain')
         
         fig.canvas.draw()
-        ax_background = fig.canvas.copy_from_bbox(ax.bbox)
         plt.show(block=False)
-
-        force = []
-        strain = []
-        batch_index = 0
-        line.set_data(strain, force)
 
         _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
         my_loadcell.start_reading()
@@ -316,23 +314,17 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
             if stop_flag:
                 my_controller.abort()
             else:
-                if my_loadcell.is_batch_ready(batch_index):
+                while my_loadcell.is_batch_ready(batch_index):
                     batch, batch_index = my_loadcell.get_batch(batch_index)
                     batch['t'] = batch['t'] - t0
 
-                    strains = (batch['t'] * linear_speed / initial_gauge_length) * 100     # in percentage
+                    forces.extend(batch['F'])
+                    strains.extend((batch['t'] * linear_speed / initial_gauge_length) * 100)
 
-                    force.extend(batch['F'])
-                    strain.extend(strains)
-
-                    line.set_data(strain, force)
-
-                    # restore background
-                    fig.canvas.restore_region(ax_background)
+                    line.set_data(strains, forces)
 
                     # redraw just the points
-                    ax.draw_artist(line)
-                    ax.draw_artist(text)
+                    ax.redraw_in_frame()
 
                     # fill in the axes rectangle
                     fig.canvas.blit(ax.bbox)
