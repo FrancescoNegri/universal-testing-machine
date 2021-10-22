@@ -322,16 +322,8 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                     strains.extend((batch['t'] * linear_speed / initial_gauge_length) * 100)
 
                     line.set_data(strains, forces)
-
-                    # redraw just the points
                     ax.redraw_in_frame()
-
-                    # fill in the axes rectangle
                     fig.canvas.blit(ax.bbox)
-
-                    # in this post http://bastibe.de/2013-05-30-speeding-up-matplotlib.html
-                    # it is mentionned that blit causes strong memory leakage.
-                    # however, I did not observe that.
                     fig.canvas.flush_events()
                 else:
                     pass
@@ -402,16 +394,8 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                         xlim = (xlim / 2) + batch['t'].iloc[-1]
 
                     line.set_data(timings, forces)
-
-                    # redraw just the points
                     ax.redraw_in_frame()
-
-                    # fill in the axes rectangle
                     fig.canvas.blit(ax.bbox)
-
-                    # in this post http://bastibe.de/2013-05-30-speeding-up-matplotlib.html
-                    # it is mentionned that blit causes strong memory leakage.
-                    # however, I did not observe that.
                     fig.canvas.flush_events()
                 else:
                     pass
