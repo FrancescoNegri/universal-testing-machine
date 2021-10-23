@@ -310,7 +310,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         line, = ax.plot(forces, strains, lw=3)
 
         xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
-        ylim = 10
+        ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
         ax.set_xlim([0, xlim])
         ax.set_ylim([0, ylim])
         ax.set_xlabel('Strain (%)')
@@ -379,7 +379,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
         line, = ax.plot(timings, forces, lw=3)
 
         xlim = 30 # in seconds
-        ylim = 10
+        ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
         ax.set_xlim([0, xlim])
         ax.set_ylim([0, ylim])
         ax.set_xlabel('Time (s)')
