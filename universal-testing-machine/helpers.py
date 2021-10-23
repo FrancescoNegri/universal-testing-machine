@@ -121,7 +121,7 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
 def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, speed:float, mode_button_pin:int, up_button_pin:int, down_button_pin:int):
     mode = 0
-    def switch_mode():
+    def _switch_mode():
         nonlocal mode
         mode = 1
         return
@@ -130,7 +130,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     up_button = Button(pin=up_button_pin)
     down_button = Button(pin=down_button_pin)
     
-    mode_button.when_released = lambda: switch_mode()
+    mode_button.when_released = lambda: _switch_mode()
     up_button.when_pressed = lambda: my_controller.motor_start(speed, controller.UP)
     up_button.when_released = lambda: my_controller.motor_stop()
     down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
@@ -280,13 +280,13 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         initial_gauge_length = test_parameters['initial_gauge_length']['value']
 
         stop_flag = False
-        def switch_stop_flag():
+        def _switch_stop_flag():
             nonlocal stop_flag
             stop_flag = True
             return
 
         stop_button = Button(pin=stop_button_pin)
-        stop_button.when_released = lambda: switch_stop_flag()
+        stop_button.when_released = lambda: _switch_stop_flag()
 
         strains = []
         forces = []
@@ -349,13 +349,13 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
     with console.status('Collecting data...'):
         stop_flag = False
-        def switch_stop_flag():
+        def _switch_stop_flag():
             nonlocal stop_flag
             stop_flag = True
             return
 
         stop_button = Button(pin=stop_button_pin)
-        stop_button.when_released = lambda: switch_stop_flag()
+        stop_button.when_released = lambda: _switch_stop_flag()
 
         timings = []
         forces = []
