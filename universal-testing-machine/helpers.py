@@ -43,13 +43,14 @@ def create_output_dir(test_parameters:dict):
 def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCell):
     try:
         with open(calibration_dir + r'/' + my_loadcell._calibration_filename) as f:
+            calibration = json.load(f)
+            loadcell_type = calibration['loadcell_type']
             use_existing_calibration = inquirer.confirm(
-                message='An existing calibration for the load cell has been found. Do you want to use it?',
+                message='An existing calibration for the {} N load cell has been found. Do you want to use it?'.format(loadcell_type),
                 default=True
             ).execute()
 
             if use_existing_calibration:
-                calibration = json.load(f)
                 my_loadcell.set_calibration(calibration)
             else:
                 my_loadcell.is_calibrated = False
@@ -59,6 +60,17 @@ def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCel
     return
 
 def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
+    loadcell_type = inquirer.select(
+        message='Selected the desired loadcell:',
+        choices=[
+            {'name': '1 N', 'value': 1},
+            {'name': '10 N', 'value': 10}
+        ],
+        default=10,
+    ).execute()
+
+    loadcell_type = int(loadcell_type)
+
     calibrating_mass = inquirer.select(
         message='Select the calibrating mass value [g]:',
         choices=[
@@ -66,7 +78,7 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
             {'name': '361.606 g (10 N load cell)', 'value': 361.606},
             {'name': 'Custom', 'value': None}
         ],
-        default=361.606
+        default= 361.606 if loadcell_type == 10 else 63.352
     ).execute()
 
     if calibrating_mass is None:
@@ -91,7 +103,7 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
         ).execute()
     mass_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=False) #HACK#
 
-    my_loadcell.calibrate(zero_raw, mass_raw, calibrating_mass, calibration_dir)
+    my_loadcell.calibrate(loadcell_type, zero_raw, mass_raw, calibrating_mass, calibration_dir)
 
     return
 
@@ -258,7 +270,9 @@ def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
 
 def save_test_parameters(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str):
     if my_loadcell.is_calibrated:
-        test_parameters['calibration'] = my_loadcell.get_calibration()
+        calibration = my_loadcell.get_calibration()
+        test_parameters['calibration'] = calibration
+        test_parameters['loadcell_type'] = calibration['loadcell_type']
     
     if my_controller.is_calibrated and test_parameters['test_type'] is 'monotonic':
         test_parameters['initial_gauge_length'] = {
