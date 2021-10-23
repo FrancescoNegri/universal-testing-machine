@@ -44,9 +44,8 @@ def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCel
     try:
         with open(calibration_dir + r'/' + my_loadcell._calibration_filename) as f:
             calibration = json.load(f)
-            loadcell_type = calibration['loadcell_type']
             use_existing_calibration = inquirer.confirm(
-                message='An existing calibration for the {} N load cell has been found. Do you want to use it?'.format(loadcell_type),
+                message='An existing calibration for the {} {} load cell has been found. Do you want to use it?'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit']),
                 default=True
             ).execute()
 
@@ -272,7 +271,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
     if my_loadcell.is_calibrated:
         calibration = my_loadcell.get_calibration()
         test_parameters['calibration'] = calibration
-        test_parameters['loadcell_type'] = calibration['loadcell_type']
+        test_parameters['loadcell_type'] = '{} {}'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit'])
     
     if my_controller.is_calibrated and test_parameters['test_type'] is 'monotonic':
         test_parameters['initial_gauge_length'] = {

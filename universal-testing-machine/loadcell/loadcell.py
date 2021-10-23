@@ -65,7 +65,10 @@ class LoadCell():
     def get_calibration(self):
         if self.is_calibrated:
             calibration = {
-                'loadcell_type': self._limit,
+                'loadcell_limit': {
+                    'value': self._limit,
+                    'unit': 'N'
+                },
                 'slope': self._slope,
                 'y_intercept': self._y_intercept,
                 'calibrating_mass': {
@@ -80,7 +83,7 @@ class LoadCell():
         return calibration
 
     def set_calibration(self, calibration:dict):
-        self._limit = calibration['loadcell_type']
+        self._limit = calibration['loadcell_limit']['value']
         self._slope = calibration['slope']
         self._y_intercept = calibration['y_intercept']
         self._calibrating_mass = calibration['calibrating_mass']['value']
@@ -88,13 +91,13 @@ class LoadCell():
         
         return
 
-    def calibrate(self, loadcell_type:int, zero_raw:int, mass_raw:int, calibrating_mass:float, calibration_dir:str):
+    def calibrate(self, loadcell_limit:int, zero_raw:int, mass_raw:int, calibrating_mass:float, calibration_dir:str):
         x0 = zero_raw
         y0 = 0
         x1 = mass_raw
         y1 = calibrating_mass
 
-        self._limit = loadcell_type
+        self._limit = loadcell_limit
         self._slope = (y1 - y0) / (x1 - x0)
         self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
         self._calibrating_mass = calibrating_mass
