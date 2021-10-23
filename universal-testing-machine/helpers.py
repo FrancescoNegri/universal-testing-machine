@@ -292,7 +292,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         forces = []
         batch_index = 0
 
-        fig = plt.figure()
+        fig = plt.figure(facecolor='#DEDEDE')
         ax = plt.axes()
         line, = ax.plot(forces, strains, lw=3)
 
@@ -361,7 +361,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
         forces = []
         batch_index = 0
 
-        fig = plt.figure()
+        fig = plt.figure(facecolor='#DEDEDE')
         ax = plt.axes()
         line, = ax.plot(timings, forces, lw=3)
 
