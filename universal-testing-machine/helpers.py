@@ -288,8 +288,8 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         stop_button = Button(pin=stop_button_pin)
         stop_button.when_released = lambda: switch_stop_flag()
 
-        forces = []
         strains = []
+        forces = []
         batch_index = 0
 
         fig = plt.figure()
@@ -317,9 +317,10 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                 while my_loadcell.is_batch_ready(batch_index):
                     batch, batch_index = my_loadcell.get_batch(batch_index)
                     batch['t'] = batch['t'] - t0
+                    batch['strain'] = (batch['t'] * linear_speed / initial_gauge_length) * 100
 
                     forces.extend(batch['F'])
-                    strains.extend((batch['t'] * linear_speed / initial_gauge_length) * 100)
+                    strains.extend(batch['strain'])
 
                     line.set_data(strains, forces)
                     ax.redraw_in_frame()
@@ -356,8 +357,8 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
         stop_button = Button(pin=stop_button_pin)
         stop_button.when_released = lambda: switch_stop_flag()
 
-        forces = []
         timings = []
+        forces = []
         batch_index = 0
 
         fig = plt.figure()
