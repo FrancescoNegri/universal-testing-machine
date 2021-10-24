@@ -385,60 +385,73 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     return data
 
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
-    with console.status('Collecting data...'):
-        stop_flag = False
-        def _switch_stop_flag():
-            nonlocal stop_flag
-            stop_flag = True
-            return
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
+    
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
 
-        stop_button = Button(pin=stop_button_pin)
-        stop_button.when_released = lambda: _switch_stop_flag()
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
 
-        timings = []
-        forces = []
-        batch_index = 0
+    timings = []
+    forces = []
+    batch_index = 0
 
-        fig = plt.figure(facecolor='#DEDEDE')
-        ax = plt.axes()
-        line, = ax.plot(timings, forces, lw=3)
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(timings, forces, lw=3)
 
-        xlim = 30 # in seconds
-        ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
-        ax.set_xlim([0, xlim])
-        ax.set_ylim([0, ylim])
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Force (N)')
-        ax.set_title('Force vs. Time')
-        
-        fig.canvas.draw()
-        plt.show(block=False)
+    xlim = 30 # in seconds
+    ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Time')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
 
-        t0 = my_controller.hold_torque()
-        my_loadcell.start_reading()
+    t0 = my_controller.hold_torque()
+    my_loadcell.start_reading()
 
-        while my_controller.is_running:
-            if stop_flag:
-                my_controller.release_torque()
+    while my_controller.is_running:
+        if stop_flag:
+            my_controller.release_torque()
+        else:
+            while my_loadcell.is_batch_ready(batch_index):
+                batch, batch_index = my_loadcell.get_batch(batch_index)
+                batch['t'] = batch['t'] - t0
+
+                forces.extend(batch['F'])
+                timings.extend(batch['t'])
+
+                if batch['t'].iloc[-1] > xlim:
+                    ax.set_xlim([(xlim / 2), (xlim / 2) + batch['t'].iloc[-1]])
+                    xlim = (xlim / 2) + batch['t'].iloc[-1]
+
+                line.set_data(timings, forces)
+                ax.redraw_in_frame()
+                fig.canvas.blit(ax.bbox)
+                fig.canvas.flush_events()
             else:
-                while my_loadcell.is_batch_ready(batch_index):
-                    batch, batch_index = my_loadcell.get_batch(batch_index)
-                    batch['t'] = batch['t'] - t0
+                pass
+        
+        if printed_lines > 1:
+            utility.delete_last_lines(printed_lines - 1)
+            printed_lines -= printed_lines - 1
+        
+        printed_lines = _show_data_table(
+            force= forces[-1] if len(forces) > 0 else None,
+            absolute_position=None,
+            printed_lines=printed_lines
+        )
 
-                    forces.extend(batch['F'])
-                    timings.extend(batch['t'])
-
-                    if batch['t'].iloc[-1] > xlim:
-                        ax.set_xlim([(xlim / 2), (xlim / 2) + batch['t'].iloc[-1]])
-                        xlim = (xlim / 2) + batch['t'].iloc[-1]
-
-                    line.set_data(timings, forces)
-                    ax.redraw_in_frame()
-                    fig.canvas.blit(ax.bbox)
-                    fig.canvas.flush_events()
-                else:
-                    pass
-
+    utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
     data = my_loadcell.stop_reading()
