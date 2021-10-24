@@ -322,6 +322,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     cross_section = test_parameters['cross_section']['value']
     initial_gauge_length = test_parameters['initial_gauge_length']['value']
     initial_absolute_position = my_controller.get_absolute_position()
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
 
     stop_flag = False
     def _switch_stop_flag():
@@ -341,7 +342,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     line, = ax.plot(forces, strains, lw=3)
 
     xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
-    ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
+    ylim = loadcell_limit
     ax.set_xlim([0, xlim])
     ax.set_ylim([0, ylim])
     ax.set_xlabel('Strain (%)')
@@ -380,7 +381,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None, 
                         absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
-                        loadcell_limit=ylim
+                        loadcell_limit=loadcell_limit
                     )
                 )
 
@@ -405,6 +406,8 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
     printed_lines = 1
+
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
     
     stop_flag = False
     def _switch_stop_flag():
@@ -424,7 +427,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     line, = ax.plot(timings, forces, lw=3)
 
     xlim = 30 # in seconds
-    ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
+    ylim = loadcell_limit
     ax.set_xlim([0, xlim])
     ax.set_ylim([0, ylim])
     ax.set_xlabel('Time (s)')
@@ -466,7 +469,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None,
                         absolute_position=None,
-                        loadcell_limit=ylim
+                        loadcell_limit=loadcell_limit
                     )
                 )
 
