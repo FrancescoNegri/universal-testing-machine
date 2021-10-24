@@ -130,7 +130,17 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
-def _show_data_table(force, absolute_position, printed_lines:int):
+def _show_data_table(force:float, absolute_position:float, printed_lines:int):
+    if force is None:
+        force = '-'
+    else:
+        force = round(force, 5)
+    
+    if absolute_position is None:
+        absolute_position = '-'
+    else:
+        absolute_position = round(absolute_position, 2)
+
     table = Table(box=box.ROUNDED)
     table.add_column('Force', justify='center', min_width=12)
     table.add_column('Absolute position', justify='center', min_width=20)
@@ -175,20 +185,20 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
             utility.delete_last_lines(printed_lines - 1)
             printed_lines -= printed_lines - 1
         
-        if my_loadcell.is_calibrated and force is not None:
+        if my_loadcell.is_calibrated:
             while my_loadcell.is_batch_ready(batch_index, batch_size):                
                 batch, batch_index = my_loadcell.get_batch(batch_index, batch_size)
-                force = round(mean(batch['F']), 5)
+                force = mean(batch['F'])
         else:
-            force = '-'
+            force = None
 
-        if my_controller.is_calibrated and absolute_position is not None:
+        if my_controller.is_calibrated:
             try:
-                absolute_position = round(my_controller.get_absolute_position(), 2)
+                absolute_position = my_controller.get_absolute_position()
             except:
-                absolute_position = '-'
+                absolute_position = None
         else:
-            absolute_position = '-'
+            absolute_position = None
 
         printed_lines = _show_data_table(
             force=force,
