@@ -130,6 +130,17 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
+def _show_data_table(force, absolute_position, printed_lines:int):
+    table = Table(box=box.ROUNDED)
+    table.add_column('Force', justify='center', min_width=12)
+    table.add_column('Absolute position', justify='center', min_width=20)
+    table.add_row(f'{force} N', f'{absolute_position} mm')
+    
+    console.print(table)
+    printed_lines += 5
+
+    return printed_lines
+
 def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, speed:float, mode_button_pin:int, up_button_pin:int, down_button_pin:int):
     mode = 0
     def _switch_mode():
@@ -147,39 +158,43 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
     down_button.when_released = lambda: my_controller.motor_stop()
 
-    batch_index = 0
-    batch_size = 20
     if my_loadcell.is_calibrated:
         my_loadcell.start_reading()
-
-    force = '-'
-    absolute_position = '-'
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Now you are allowed to manually move the crossbar up and down.')
     console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for manual mode to be stopped...')
     printed_lines = 1
+    
+    force = None
+    absolute_position = None
+    batch_index = 0
+    batch_size = 25
+    
     while mode == 0:
         if printed_lines > 1:
             utility.delete_last_lines(printed_lines - 1)
             printed_lines -= printed_lines - 1
         
-        if my_loadcell.is_calibrated:
-            if my_loadcell.is_batch_ready(batch_index, batch_size):                
+        if my_loadcell.is_calibrated and force is not None:
+            while my_loadcell.is_batch_ready(batch_index, batch_size):                
                 batch, batch_index = my_loadcell.get_batch(batch_index, batch_size)
                 force = round(mean(batch['F']), 5)
+        else:
+            force = '-'
 
-        if my_controller.is_calibrated:
+        if my_controller.is_calibrated and absolute_position is not None:
             try:
                 absolute_position = round(my_controller.get_absolute_position(), 2)
             except:
                 absolute_position = '-'
-        
-        table = Table(box=box.ROUNDED)
-        table.add_column('Force', justify='center', min_width=12)
-        table.add_column('Absolute position', justify='center', min_width=20)
-        table.add_row(f'{force} N', f'{absolute_position} mm')
-        console.print(table)
-        printed_lines += 5
+        else:
+            absolute_position = '-'
+
+        printed_lines = _show_data_table(
+            force=force,
+            absolute_position=absolute_position,
+            printed_lines=printed_lines
+        )
 
         if down_button.is_active and my_controller._down_endstop.is_active:
             my_controller.motor_stop()
