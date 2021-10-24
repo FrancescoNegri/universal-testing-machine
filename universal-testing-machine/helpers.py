@@ -4,6 +4,7 @@ from InquirerPy import inquirer, validator
 from rich import box
 from rich.console import Console
 from rich.table import Table
+from rich.live import Live
 console = Console()
 from datetime import datetime
 from utility import utility
@@ -130,6 +131,33 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
+def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float):
+    if force is None:
+        force = '-'
+        loadcell_usage = '-'
+        loadcell_usage_style = None
+    elif loadcell_limit is None:
+        force = round(force, 5)
+        loadcell_usage = '-'
+        loadcell_usage_style = None
+    else:
+        force = round(force, 5)
+        loadcell_usage = abs(round((force / loadcell_limit) * 100, 2))
+        loadcell_usage_style = 'red' if loadcell_usage > 85 else None
+    
+    if absolute_position is None:
+        absolute_position = '-'
+    else:
+        absolute_position = round(absolute_position, 2)
+
+    table = Table(box=box.ROUNDED)
+    table.add_column('Force', justify='center', min_width=12)
+    table.add_column('Absolute position', justify='center', min_width=20)
+    table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
+    table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
+
+    return table
+
 def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, speed:float, mode_button_pin:int, up_button_pin:int, down_button_pin:int):
     mode = 0
     def _switch_mode():
@@ -147,44 +175,44 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
     down_button.when_released = lambda: my_controller.motor_stop()
 
-    batch_index = 0
-    batch_size = 20
     if my_loadcell.is_calibrated:
         my_loadcell.start_reading()
-
-    force = '-'
-    absolute_position = '-'
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Now you are allowed to manually move the crossbar up and down.')
     console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for manual mode to be stopped...')
     printed_lines = 1
-    while mode == 0:
-        if printed_lines > 1:
-            utility.delete_last_lines(printed_lines - 1)
-            printed_lines -= printed_lines - 1
-        
-        if my_loadcell.is_calibrated:
-            if my_loadcell.is_batch_ready(batch_index, batch_size):                
-                batch, batch_index = my_loadcell.get_batch(batch_index, batch_size)
-                force = round(mean(batch['F']), 5)
+    
+    force = None
+    absolute_position = None
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value'] if my_loadcell.is_calibrated else None
+    batch_index = 0
+    batch_size = 25
 
-        if my_controller.is_calibrated:
-            try:
-                absolute_position = round(my_controller.get_absolute_position(), 2)
-            except:
-                absolute_position = '-'
-        
-        table = Table(box=box.ROUNDED)
-        table.add_column('Force', justify='center', min_width=12)
-        table.add_column('Absolute position', justify='center', min_width=20)
-        table.add_row(f'{force} N', f'{absolute_position} mm')
-        console.print(table)
-        printed_lines += 5
+    live_table = Live(_generate_data_table(force, absolute_position, loadcell_limit), refresh_per_second=12, transient=True)
+    
+    with live_table:
+        while mode == 0:            
+            if my_loadcell.is_calibrated:
+                while my_loadcell.is_batch_ready(batch_index, batch_size):                
+                    batch, batch_index = my_loadcell.get_batch(batch_index, batch_size)
+                    force = mean(batch['F'])
+            else:
+                force = None
 
-        if down_button.is_active and my_controller._down_endstop.is_active:
-            my_controller.motor_stop()
-        if up_button.is_active and my_controller._up_endstop.is_active:
-            my_controller.motor_stop()
+            if my_controller.is_calibrated:
+                try:
+                    absolute_position = my_controller.get_absolute_position()
+                except:
+                    absolute_position = None
+            else:
+                absolute_position = None
+
+            live_table.update(_generate_data_table(force, absolute_position, loadcell_limit))
+
+            if down_button.is_active and my_controller._down_endstop.is_active:
+                my_controller.motor_stop()
+            if up_button.is_active and my_controller._up_endstop.is_active:
+                my_controller.motor_stop()
 
     if my_loadcell.is_calibrated:
         my_loadcell.stop_reading()
@@ -286,43 +314,50 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
     return
 
 def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
-    with console.status('Collecting data...'):
-        displacement = test_parameters['displacement']['value']
-        linear_speed = test_parameters['linear_speed']['value']
-        cross_section = test_parameters['cross_section']['value']
-        initial_gauge_length = test_parameters['initial_gauge_length']['value']
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
+    
+    displacement = test_parameters['displacement']['value']
+    linear_speed = test_parameters['linear_speed']['value']
+    cross_section = test_parameters['cross_section']['value']
+    initial_gauge_length = test_parameters['initial_gauge_length']['value']
+    initial_absolute_position = my_controller.get_absolute_position()
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
 
-        stop_flag = False
-        def _switch_stop_flag():
-            nonlocal stop_flag
-            stop_flag = True
-            return
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
 
-        stop_button = Button(pin=stop_button_pin)
-        stop_button.when_released = lambda: _switch_stop_flag()
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
 
-        strains = []
-        forces = []
-        batch_index = 0
+    strains = []
+    forces = []
+    batch_index = 0
 
-        fig = plt.figure(facecolor='#DEDEDE')
-        ax = plt.axes()
-        line, = ax.plot(forces, strains, lw=3)
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(forces, strains, lw=3)
 
-        xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
-        ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
-        ax.set_xlim([0, xlim])
-        ax.set_ylim([0, ylim])
-        ax.set_xlabel('Strain (%)')
-        ax.set_ylabel('Force (N)')
-        ax.set_title('Force vs. Strain')
-        
-        fig.canvas.draw()
-        plt.show(block=False)
+    xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
+    ylim = loadcell_limit
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Strain (%)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Strain')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
 
-        _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
-        my_loadcell.start_reading()
+    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
 
+    _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
+    my_loadcell.start_reading()
+
+    with live_table:
         while my_controller.is_running:
             if stop_flag:
                 my_controller.abort()
@@ -341,7 +376,16 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                     fig.canvas.flush_events()
                 else:
                     pass
+                    
+                live_table.update(
+                    _generate_data_table(
+                        force=forces[-1] if len(forces) > 0 else None, 
+                        absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                        loadcell_limit=loadcell_limit
+                    )
+                )
 
+    utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
     data = my_loadcell.stop_reading()
@@ -360,38 +404,45 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     return data
 
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
-    with console.status('Collecting data...'):
-        stop_flag = False
-        def _switch_stop_flag():
-            nonlocal stop_flag
-            stop_flag = True
-            return
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
 
-        stop_button = Button(pin=stop_button_pin)
-        stop_button.when_released = lambda: _switch_stop_flag()
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
+    
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
 
-        timings = []
-        forces = []
-        batch_index = 0
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
 
-        fig = plt.figure(facecolor='#DEDEDE')
-        ax = plt.axes()
-        line, = ax.plot(timings, forces, lw=3)
+    timings = []
+    forces = []
+    batch_index = 0
 
-        xlim = 30 # in seconds
-        ylim = my_loadcell.get_calibration()['loadcell_limit']['value']
-        ax.set_xlim([0, xlim])
-        ax.set_ylim([0, ylim])
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Force (N)')
-        ax.set_title('Force vs. Time')
-        
-        fig.canvas.draw()
-        plt.show(block=False)
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(timings, forces, lw=3)
 
-        t0 = my_controller.hold_torque()
-        my_loadcell.start_reading()
+    xlim = 30 # in seconds
+    ylim = loadcell_limit
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Time')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
 
+    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+
+    t0 = my_controller.hold_torque()
+    my_loadcell.start_reading()
+
+    with live_table:
         while my_controller.is_running:
             if stop_flag:
                 my_controller.release_torque()
@@ -414,6 +465,15 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                 else:
                     pass
 
+                live_table.update(
+                    _generate_data_table(
+                        force=forces[-1] if len(forces) > 0 else None,
+                        absolute_position=None,
+                        loadcell_limit=loadcell_limit
+                    )
+                )
+
+    utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
     data = my_loadcell.stop_reading()
