@@ -131,11 +131,19 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
-def _generate_data_table(force:float, absolute_position:float):
+def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float):
     if force is None:
         force = '-'
+        loadcell_usage = '-'
+        loadcell_usage_style = None
+    elif loadcell_limit is None:
+        force = round(force, 5)
+        loadcell_usage = '-'
+        loadcell_usage_style = None
     else:
         force = round(force, 5)
+        loadcell_usage = abs(round((force / loadcell_limit) * 100, 2))
+        loadcell_usage_style = 'red' if loadcell_usage > 85 else None
     
     if absolute_position is None:
         absolute_position = '-'
@@ -145,7 +153,8 @@ def _generate_data_table(force:float, absolute_position:float):
     table = Table(box=box.ROUNDED)
     table.add_column('Force', justify='center', min_width=12)
     table.add_column('Absolute position', justify='center', min_width=20)
-    table.add_row(f'{force} N', f'{absolute_position} mm')
+    table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
+    table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
 
     return table
 
@@ -175,10 +184,11 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     force = None
     absolute_position = None
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value'] if my_loadcell.is_calibrated else None
     batch_index = 0
     batch_size = 25
 
-    live_table = Live(_generate_data_table(force, absolute_position), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(force, absolute_position, loadcell_limit), refresh_per_second=12, transient=True)
     
     with live_table:
         while mode == 0:            
@@ -197,7 +207,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
             else:
                 absolute_position = None
 
-            live_table.update(_generate_data_table(force, absolute_position))
+            live_table.update(_generate_data_table(force, absolute_position, loadcell_limit))
 
             if down_button.is_active and my_controller._down_endstop.is_active:
                 my_controller.motor_stop()
@@ -341,7 +351,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     fig.canvas.draw()
     plt.show(block=False)
 
-    live_table = Live(_generate_data_table(None, None), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
 
     _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
     my_loadcell.start_reading()
@@ -369,7 +379,8 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                 live_table.update(
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None, 
-                        absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None
+                        absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                        loadcell_limit=ylim
                     )
                 )
 
@@ -423,7 +434,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     fig.canvas.draw()
     plt.show(block=False)
 
-    live_table = Live(_generate_data_table(None, None), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
 
     t0 = my_controller.hold_torque()
     my_loadcell.start_reading()
@@ -454,7 +465,8 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                 live_table.update(
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None,
-                        absolute_position=None
+                        absolute_position=None,
+                        loadcell_limit=ylim
                     )
                 )
 
