@@ -232,14 +232,14 @@ def _read_monotonic_test_parameters(default_clamps_distance:float = None):
     test_parameters = {}
 
     test_parameters['cross_section'] = {
-                'value': float(
-                    inquirer.text(
-                        message='Insert the sample cross section [mm²]:',
-                        validate=validator.NumberValidator(float_allowed=True)
-                    ).execute()
-                ),
-                'unit': 'mm²'
-            }
+        'value': float(
+            inquirer.text(
+                message='Insert the sample cross section [mm²]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm²'
+    }
 
     test_parameters['displacement'] = {
         'value': float(
