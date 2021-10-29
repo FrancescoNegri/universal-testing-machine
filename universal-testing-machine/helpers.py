@@ -241,6 +241,17 @@ def _read_monotonic_test_parameters(default_clamps_distance:float = None):
         'unit': 'mm²'
     }
 
+    test_parameters['clamps_distance'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the clamps distance [mm]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(default_clamps_distance)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
     test_parameters['displacement'] = {
         'value': float(
             inquirer.text(
