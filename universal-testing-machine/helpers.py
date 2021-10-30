@@ -131,7 +131,7 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
-def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float):
+def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float, test_parameters:dict = None):
     if force is None:
         force = '-'
         loadcell_usage = '-'
@@ -144,17 +144,34 @@ def _generate_data_table(force:float, absolute_position:float, loadcell_limit:fl
         force = round(force, 5)
         loadcell_usage = abs(round((force / loadcell_limit) * 100, 2))
         loadcell_usage_style = 'red' if loadcell_usage > 85 else None
-    
+
     if absolute_position is None:
         absolute_position = '-'
+        test_progress = '-'
     else:
         absolute_position = round(absolute_position, 2)
+
+        if test_parameters is None:
+            test_progress = None
+        elif test_parameters['test_type'] is 'monotonic':
+            initial_absolute_position = test_parameters['initial_gauge_length']['value'] - test_parameters['clamps_distance']['value']
+            test_progress = ((absolute_position - initial_absolute_position) / test_parameters['displacement']['value']) * 100
+            test_progress = round(test_progress, 1)
+        elif test_parameters['test_type'] is 'cyclic':
+            pass
 
     table = Table(box=box.ROUNDED)
     table.add_column('Force', justify='center', min_width=12)
     table.add_column('Absolute position', justify='center', min_width=20)
     table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
-    table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
+
+    if test_parameters is None:
+        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
+    elif test_parameters['test_type'] is 'monotonic':
+        table.add_column('Test progress', justify='center', min_width=12)        
+        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
+    elif test_parameters['test_type'] is 'cyclic':
+        pass
 
     return table
 
@@ -381,7 +398,8 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None, 
                         absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
-                        loadcell_limit=loadcell_limit
+                        loadcell_limit=loadcell_limit,
+                        test_parameters=test_parameters
                     )
                 )
 
