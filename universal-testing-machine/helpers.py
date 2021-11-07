@@ -272,6 +272,21 @@ def _read_monotonic_test_parameters(default_clamps_distance:float = None):
         'unit': 'mm/s'
     }
 
+    return test_parameters
+
+def _read_cyclic_test_parameters(default_clamps_distance:float = None):
+    test_parameters = {}
+
+    test_parameters['cross_section'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the sample cross section [mm²]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm²'
+    }
+
     test_parameters['clamps_distance'] = {
         'value': float(
             inquirer.text(
@@ -282,6 +297,13 @@ def _read_monotonic_test_parameters(default_clamps_distance:float = None):
         ),
         'unit': 'mm'
     }
+
+    test_parameters['cycles_number'] = float(
+        inquirer.text(
+            message='Insert the number of cycles to execute:',
+            validate=validator.NumberValidator(float_allowed=False)
+        ).execute()
+    )
 
     return test_parameters
 
@@ -296,10 +318,12 @@ def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
     }
 
     while not is_confirmed:
-        if test_type is 'monotonic':        
-            test_parameters = {**test_parameters, **_read_monotonic_test_parameters(default_clamps_distance)}
+        if test_type is 'monotonic':
+            monotonic_test_parameters = _read_monotonic_test_parameters(default_clamps_distance)
+            test_parameters = {**test_parameters, **monotonic_test_parameters}
         elif test_type is 'cyclic':
-            pass
+            cyclic_test_parameters = _read_cyclic_test_parameters(default_clamps_distance)
+            test_parameters = {**test_parameters, **cyclic_test_parameters}
         elif test_type is 'static':
             pass
 
