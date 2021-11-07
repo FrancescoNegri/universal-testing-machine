@@ -305,6 +305,75 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
         ).execute()
     )
 
+    # CYCLIC PHASE PARAMETERS
+    cyclic_phase_parameters = {}
+
+    cyclic_phase_parameters['cyclic_upper_limit'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the cycle upper limit as a displacement with respect to the current position [mm]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
+    cyclic_phase_parameters['cyclic_lower_limit'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the cycle lower limit as a displacement with respect to the current position [mm]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(0)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
+    cyclic_phase_parameters['cyclic_speed'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the speed to employ during each load cycle [mm/s]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm/s'
+    }
+
+    cyclic_phase_parameters['cyclic_return_speed'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the speed to employ during each unload cycle [mm/s]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(cyclic_phase_parameters['cyclic_speed'])
+            ).execute()
+        ),
+        'unit': 'mm/s'
+    }
+
+    cyclic_phase_parameters['cyclic_delay'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the delay before starting a new load cycle [s]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(0)
+            ).execute()
+        ),
+        'unit': 's'
+    }
+
+    cyclic_phase_parameters['cyclic_return_delay'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the delay before unloading the specimen [s]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(0)
+            ).execute()
+        ),
+        'unit': 's'
+    }
+
+    test_parameters = {**test_parameters, **cyclic_phase_parameters}
+
     return test_parameters
 
 def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
