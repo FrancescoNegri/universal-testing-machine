@@ -344,7 +344,7 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
             inquirer.text(
                 message='Insert the speed to employ during each unload cycle [mm/s]:',
                 validate=validator.NumberValidator(float_allowed=True),
-                default=str(cyclic_phase_parameters['cyclic_speed'])
+                default=str(cyclic_phase_parameters['cyclic_speed']['value'])
             ).execute()
         ),
         'unit': 'mm/s'
@@ -387,7 +387,7 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
                 inquirer.text(
                     message='Insert the speed to employ during each load cycle [mm/s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(cyclic_phase_parameters['cyclic_speed'])
+                    default=str(cyclic_phase_parameters['cyclic_speed']['value'])
                 ).execute()
             ),
             'unit': 'mm/s'
@@ -398,7 +398,7 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
                 inquirer.text(
                     message='Insert the speed to employ during each unload cycle [mm/s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(cyclic_phase_parameters['cyclic_return_speed'])
+                    default=str(cyclic_phase_parameters['cyclic_return_speed']['value'])
                 ).execute()
             ),
             'unit': 'mm/s'
@@ -409,7 +409,7 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
                 inquirer.text(
                     message='Insert the delay before unloading the specimen during the pretensioning [s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(cyclic_phase_parameters['cyclic_return_delay'])
+                    default=str(cyclic_phase_parameters['cyclic_return_delay']['value'])
                 ).execute()
             ),
             'unit': 's'
@@ -441,7 +441,7 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
                 inquirer.text(
                     message='Insert the speed to employ while reaching failure [mm/s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(cyclic_phase_parameters['cyclic_speed'])
+                    default=str(cyclic_phase_parameters['cyclic_speed']['value'])
                 ).execute()
             ),
             'unit': 'mm/s'
