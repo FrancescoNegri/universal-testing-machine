@@ -374,6 +374,60 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
 
     test_parameters = {**test_parameters, **cyclic_phase_parameters}
 
+    # PRETENSIONING PHASE PARAMETERS
+    pretensioning_phase_parameters = {}
+
+    pretensioning_phase_parameters['is_pretensioning_set'] = inquirer.confirm(
+        message='Do you want to perform a pretensioning cycle?'
+    ).execute()
+
+    if pretensioning_phase_parameters['is_pretensioning_set'] is True:
+        pretensioning_phase_parameters['pretensioning_speed'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the speed to employ during each load cycle [mm/s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_speed'])
+                ).execute()
+            ),
+            'unit': 'mm/s'
+        }
+
+        pretensioning_phase_parameters['pretensioning_return_speed'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the speed to employ during each unload cycle [mm/s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_return_speed'])
+                ).execute()
+            ),
+            'unit': 'mm/s'
+        }
+
+        pretensioning_phase_parameters['pretensioning_return_delay'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the delay before unloading the specimen during the pretensioning [s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_return_delay'])
+                ).execute()
+            ),
+            'unit': 's'
+        }
+
+        pretensioning_phase_parameters['pretensioning_after_delay'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the delay before starting the cyclic phase [s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(0)
+                ).execute()
+            ),
+            'unit': 's'
+        }
+
+    test_parameters = {**test_parameters, **pretensioning_phase_parameters}
+
     return test_parameters
 
 def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
