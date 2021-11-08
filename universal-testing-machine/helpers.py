@@ -428,6 +428,38 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
 
     test_parameters = {**test_parameters, **pretensioning_phase_parameters}
 
+    # FAILURE PHASE PARAMETERS
+    failure_phase_parameters = {}
+
+    failure_phase_parameters['is_failure_set'] = inquirer.confirm(
+        message='Do you want the test to finish by reaching specimen failure?'
+    ).execute()
+
+    if failure_phase_parameters['is_failure_set'] is True:
+        failure_phase_parameters['failure_speed'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the speed to employ while reaching failure [mm/s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_speed'])
+                ).execute()
+            ),
+            'unit': 'mm/s'
+        }
+
+        failure_phase_parameters['failure_before_delay'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the delay before starting the failure phase [s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(0)
+                ).execute()
+            ),
+            'unit': 's'
+        }
+
+    test_parameters = {**test_parameters, **failure_phase_parameters}
+
     return test_parameters
 
 def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
