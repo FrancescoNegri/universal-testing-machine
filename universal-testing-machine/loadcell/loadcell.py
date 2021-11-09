@@ -142,7 +142,7 @@ class LoadCell():
         
         weights = self._slope * readings + self._y_intercept
         forces = (weights / 1000) * constants.g
-        data = {'t': timings, 'F': forces}
+        data = {'t': timings, 'readings': readings, 'F': forces}
 
         # TODO: eventualmente aggiungere qui vari filtri e post elaborazione dei dati
         
