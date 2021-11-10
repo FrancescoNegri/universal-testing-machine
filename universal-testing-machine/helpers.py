@@ -132,7 +132,7 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
-def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float, test_parameters:dict = None):
+def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float, force_offset:float, test_parameters:dict = None):
     if force is None:
         force = '-'
         loadcell_usage = '-'
@@ -143,7 +143,9 @@ def _generate_data_table(force:float, absolute_position:float, loadcell_limit:fl
         loadcell_usage_style = None
     else:
         force = round(force, 5)
-        loadcell_usage = abs(round((force / loadcell_limit) * 100, 2))
+        if force_offset is None:
+            force_offset = 0
+        loadcell_usage = abs(round(((force + force_offset) / loadcell_limit) * 100, 2))
         loadcell_usage_style = 'red' if loadcell_usage > 85 else None
 
     if absolute_position is None:
@@ -203,10 +205,11 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     force = None
     absolute_position = None
     loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value'] if my_loadcell.is_calibrated else None
+    force_offset = my_loadcell.get_offset(is_force=True) if my_loadcell.is_calibrated else None
     batch_index = 0
     batch_size = 25
 
-    live_table = Live(_generate_data_table(force, absolute_position, loadcell_limit), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(force, absolute_position, loadcell_limit, force_offset), refresh_per_second=12, transient=True)
     
     with live_table:
         while mode == 0:            
@@ -225,7 +228,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
             else:
                 absolute_position = None
 
-            live_table.update(_generate_data_table(force, absolute_position, loadcell_limit))
+            live_table.update(_generate_data_table(force, absolute_position, loadcell_limit, force_offset))
 
             if down_button.is_active and my_controller._down_endstop.is_active:
                 my_controller.motor_stop()
@@ -370,7 +373,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     fig.canvas.draw()
     plt.show(block=False)
 
-    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
     _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
     my_loadcell.start_reading()
@@ -400,6 +403,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                         force=forces[-1] if len(forces) > 0 else None, 
                         absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
                         loadcell_limit=loadcell_limit,
+                        force_offset=my_loadcell.get_offset(is_force=True),
                         test_parameters=test_parameters
                     )
                 )
@@ -456,7 +460,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     fig.canvas.draw()
     plt.show(block=False)
 
-    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
     t0 = my_controller.hold_torque()
     my_loadcell.start_reading()
@@ -488,7 +492,8 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None,
                         absolute_position=None,
-                        loadcell_limit=loadcell_limit
+                        loadcell_limit=loadcell_limit,
+                        force_offset=my_loadcell.get_offset(is_force=True)
                     )
                 )
 
