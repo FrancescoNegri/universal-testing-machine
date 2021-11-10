@@ -246,7 +246,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
+def read_test_parameters(test_type:bool):
     is_confirmed = False
 
     timestamp = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
@@ -293,7 +293,7 @@ def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
                     inquirer.text(
                         message='Insert the clamps distance [mm]:',
                         validate=validator.NumberValidator(float_allowed=True),
-                        default=str(default_clamps_distance)
+                        default=str(constants.DEFAULT_CLAMPS_DISTANCE)
                     ).execute()
                 ),
                 'unit': 'mm'
