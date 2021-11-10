@@ -604,6 +604,9 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
 
     return data
 
+def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
+    return
+
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
     printed_lines = 1
@@ -697,7 +700,12 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
             stop_button_pin=stop_button_pin
         )
     elif test_parameters['test_type'] is 'cyclic':
-        print('Not implemented yet.')
+        data = _start_cyclic_test(
+            my_controller=my_controller,
+            my_loadcell=my_loadcell,
+            test_parameters=test_parameters,
+            stop_button_pin=stop_button_pin
+        )
     elif test_parameters['test_type'] is 'static':
         data = _start_static_test(
             my_controller=my_controller,
