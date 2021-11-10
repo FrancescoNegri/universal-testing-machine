@@ -14,6 +14,7 @@ import json
 import scipy.signal
 from gpiozero import Button
 import matplotlib.pyplot as plt
+import constants
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
@@ -74,11 +75,11 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
     calibrating_mass = inquirer.select(
         message='Select the calibrating mass value [g]:',
         choices=[
-            {'name': '63.352 g (1 N load cell)', 'value': 63.352},
-            {'name': '361.606 g (10 N load cell)', 'value': 361.606},
+            {'name': f'{str(constants.CALIBRATING_MASS_1_N)} g (1 N load cell)', 'value': constants.CALIBRATING_MASS_1_N},
+            {'name': f'{str(constants.CALIBRATING_MASS_10_N)} g (10 N load cell)', 'value': constants.CALIBRATING_MASS_10_N},
             {'name': 'Custom', 'value': None}
         ],
-        default= 361.606 if loadcell_type == 10 else 63.352
+        default= constants.CALIBRATING_MASS_10_N if loadcell_type == 10 else constants.CALIBRATING_MASS_1_N
     ).execute()
 
     if calibrating_mass is None:
