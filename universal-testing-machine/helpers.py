@@ -697,7 +697,7 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
             stop_button_pin=stop_button_pin
         )
     elif test_parameters['test_type'] is 'cyclic':
-        pass
+        print('Not implemented yet.')
     elif test_parameters['test_type'] is 'static':
         data = _start_static_test(
             my_controller=my_controller,
