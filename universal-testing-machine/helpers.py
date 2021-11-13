@@ -14,6 +14,8 @@ import json
 import scipy.signal
 from gpiozero import Button
 import matplotlib.pyplot as plt
+import time
+import pandas as pd
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
@@ -606,6 +608,72 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     return data
 
 def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
+    
+    # GENERIC PARAMETERS
+    cycles_number = test_parameters['cycles_number']
+    cross_section = test_parameters['cross_section']['value']
+    initial_gauge_length = test_parameters['initial_gauge_length']['value']
+    initial_absolute_position = my_controller.get_absolute_position()
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
+
+    # CYCLIC PHASE PARAMETERS
+    cyclic_upper_limit = test_parameters['cyclic_upper_limit']['value']
+    cyclic_lower_limit = test_parameters['cyclic_lower_limit']['value']
+    cyclic_speed = test_parameters['cyclic_speed']['value']
+    cyclic_return_speed = test_parameters['cyclic_return_speed']['value']
+    cyclic_delay = test_parameters['cyclic_delay']['value']
+    cyclic_return_delay = test_parameters['cyclic_return_delay']['value']
+
+    # PRETENSIONING PHASE PARAMETERS
+    is_pretensioning_set = test_parameters['is_pretensioning_set']
+    if is_pretensioning_set:
+        pretensioning_speed = test_parameters['pretensioning_speed']['value']
+        pretensioning_return_speed = test_parameters['pretensioning_return_speed']['value']
+        pretensioning_return_delay = test_parameters['pretensioning_return_delay']['value']
+        pretensioning_after_delay = test_parameters['pretensioning_after_delay']['value']
+
+    # FAILURE PHASE PARAMETERS
+    is_failure_set = test_parameters['is_failure_set']
+    if is_failure_set:
+        pass
+
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
+
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
+
+    strains = []
+    forces = []
+
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(forces, strains, lw=3)
+
+    xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100) # 10% margin
+    ylim = loadcell_limit
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Strain (%)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Strain')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
+
+    t0 = time.time()
+
+    data_list = []
+        
+    utility.delete_last_lines(printed_lines)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
+
+    stop_button.when_released = None
     return
 
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
