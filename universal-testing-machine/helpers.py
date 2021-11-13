@@ -502,11 +502,12 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
         test_parameters['calibration'] = calibration
         test_parameters['loadcell_type'] = '{} {}'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit'])
     
-    if my_controller.is_calibrated and test_parameters['test_type'] == 'monotonic':
-        test_parameters['initial_gauge_length'] = {
-            'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
-            'unit': 'mm'
-        }
+    if my_controller.is_calibrated:
+        if test_parameters['test_type'] == 'monotonic' or test_parameters['test_type'] == 'cyclic':
+            test_parameters['initial_gauge_length'] = {
+                'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
+                'unit': 'mm'
+            }
 
     filename = 'test_parameters.json'
     with open(output_dir + r'/' + filename, 'w') as f:
