@@ -176,7 +176,7 @@ def _generate_data_table(force:float, absolute_position:float, loadcell_limit:fl
         table.add_column('Test progress', justify='center', min_width=12)        
         table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
     elif test_parameters['test_type'] == 'cyclic':
-        pass
+        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
 
     return table
 
