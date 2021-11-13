@@ -647,7 +647,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     my_loadcell.start_reading()
 
     with live_table:
-        while my_controller.is_running:
+        while my_controller.is_holding:
             if stop_flag:
                 my_controller.release_torque()
             else:
