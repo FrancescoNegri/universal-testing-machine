@@ -708,6 +708,42 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
 
             data_list.append(my_loadcell.stop_reading())
 
+        # PRETENSIONING PHASE - RETURN DELAY
+        live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+        batch_index = 0
+        if stop_flag is False:
+            t0_delay = my_controller.hold_torque()
+            my_loadcell.start_reading()
+
+            with live_table:
+                while my_controller.is_holding:
+                    if stop_flag or time.time() - t0_delay >= pretensioning_return_delay:
+                        my_controller.release_torque()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0
+                            batch['strain'] = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            line.set_data(strains, forces)
+                            ax.redraw_in_frame()
+                            fig.canvas.blit(ax.bbox)
+                            fig.canvas.flush_events()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
         
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
