@@ -473,13 +473,13 @@ def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
     }
 
     while not is_confirmed:
-        if test_type is 'monotonic':
+        if test_type == 'monotonic':
             monotonic_test_parameters = _read_monotonic_test_parameters(default_clamps_distance)
             test_parameters = {**test_parameters, **monotonic_test_parameters}
-        elif test_type is 'cyclic':
+        elif test_type == 'cyclic':
             cyclic_test_parameters = _read_cyclic_test_parameters(default_clamps_distance)
             test_parameters = {**test_parameters, **cyclic_test_parameters}
-        elif test_type is 'static':
+        elif test_type == 'static':
             pass
 
         test_parameters['test_id'] = inquirer.text(
@@ -502,7 +502,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
         test_parameters['calibration'] = calibration
         test_parameters['loadcell_type'] = '{} {}'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit'])
     
-    if my_controller.is_calibrated and test_parameters['test_type'] is 'monotonic':
+    if my_controller.is_calibrated and test_parameters['test_type'] == 'monotonic':
         test_parameters['initial_gauge_length'] = {
             'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
             'unit': 'mm'
@@ -692,21 +692,21 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
 def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
     data = None
 
-    if test_parameters['test_type'] is 'monotonic':
+    if test_parameters['test_type'] == 'monotonic':
         data = _start_monotonic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
             stop_button_pin=stop_button_pin
         )
-    elif test_parameters['test_type'] is 'cyclic':
+    elif test_parameters['test_type'] == 'cyclic':
         data = _start_cyclic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
             stop_button_pin=stop_button_pin
         )
-    elif test_parameters['test_type'] is 'static':
+    elif test_parameters['test_type'] == 'static':
         data = _start_static_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
