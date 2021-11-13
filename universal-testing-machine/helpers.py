@@ -695,7 +695,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     
     if is_pretensioning_set:
         # PRETENSIONING PHASE - RUN
-        live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
         batch_index = 0
         if stop_flag is False:
             my_controller.run(pretensioning_speed, cyclic_upper_limit, controller.UP)
@@ -725,14 +725,16 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             _generate_data_table(
                                 force=forces[-1] if len(forces) > 0 else None, 
                                 absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
-                                loadcell_limit=loadcell_limit
+                                loadcell_limit=loadcell_limit,
+                                force_offset=my_loadcell.get_offset(is_force=True),
+                                test_parameters=test_parameters
                             )
                         )
 
             data_list.append(my_loadcell.stop_reading())
 
         # PRETENSIONING PHASE - RETURN DELAY
-        live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
         batch_index = 0
         if stop_flag is False:
             t0_delay = my_controller.hold_torque()
@@ -762,7 +764,9 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             _generate_data_table(
                                 force=forces[-1] if len(forces) > 0 else None, 
                                 absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
-                                loadcell_limit=loadcell_limit
+                                loadcell_limit=loadcell_limit,
+                                force_offset=my_loadcell.get_offset(is_force=True),
+                                test_parameters=test_parameters
                             )
                         )
 
