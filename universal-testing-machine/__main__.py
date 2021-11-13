@@ -42,12 +42,12 @@ while result is not None:
         default='monotonic'
     ).execute()
 
-    if result is 'loadcell_calibration':
+    if result == 'loadcell_calibration':
         calibration_dir = helpers.create_calibration_dir()
         helpers.check_existing_calibration(calibration_dir, my_loadcell)
         if my_loadcell.is_calibrated is not True:
             helpers.calibrate_loadcell(my_loadcell, calibration_dir)
-    elif result is 'manual':
+    elif result == 'manual':
         helpers.start_manual_mode(
             my_controller,
             my_loadcell,
@@ -56,7 +56,7 @@ while result is not None:
             up_button_pin=17,
             down_button_pin=27
         )
-    elif result is 'monotonic' or result is 'cyclic':
+    elif result == 'monotonic' or result == 'cyclic':
         adjustment_position = float(inquirer.text(
             message='Specify the crossbar initial position [mm]:',
             default='50',
@@ -92,7 +92,7 @@ while result is not None:
                 output_dir=output_dir,
                 stop_button_pin=22
             )
-    elif result is 'static':
+    elif result == 'static':
         calibration_dir = helpers.create_calibration_dir()
         helpers.check_existing_calibration(calibration_dir, my_loadcell)
         if my_loadcell.is_calibrated is not True:

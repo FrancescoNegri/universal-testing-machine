@@ -15,6 +15,8 @@ import scipy.signal
 from gpiozero import Button
 import matplotlib.pyplot as plt
 import constants
+import time
+import pandas as pd
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
@@ -500,7 +502,7 @@ def read_test_parameters(test_type:bool):
         elif test_type is 'cyclic':
             cyclic_test_parameters = _read_cyclic_test_parameters()
             test_parameters = {**test_parameters, **cyclic_test_parameters}
-        elif test_type is 'static':
+        elif test_type == 'static':
             pass
 
         test_parameters['test_id'] = inquirer.text(
@@ -523,11 +525,12 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
         test_parameters['calibration'] = calibration
         test_parameters['loadcell_type'] = '{} {}'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit'])
     
-    if my_controller.is_calibrated and test_parameters['test_type'] is 'monotonic':
-        test_parameters['initial_gauge_length'] = {
-            'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
-            'unit': 'mm'
-        }
+    if my_controller.is_calibrated:
+        if test_parameters['test_type'] == 'monotonic' or test_parameters['test_type'] == 'cyclic':
+            test_parameters['initial_gauge_length'] = {
+                'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
+                'unit': 'mm'
+            }
 
     filename = 'test_parameters.json'
     with open(output_dir + r'/' + filename, 'w') as f:
@@ -627,6 +630,150 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
 
     return data
 
+def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
+    
+    # GENERIC PARAMETERS
+    cycles_number = test_parameters['cycles_number']
+    cross_section = test_parameters['cross_section']['value']
+    initial_gauge_length = test_parameters['initial_gauge_length']['value']
+    initial_absolute_position = my_controller.get_absolute_position()
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
+
+    # CYCLIC PHASE PARAMETERS
+    cyclic_upper_limit = test_parameters['cyclic_upper_limit']['value']
+    cyclic_lower_limit = test_parameters['cyclic_lower_limit']['value']
+    cyclic_speed = test_parameters['cyclic_speed']['value']
+    cyclic_return_speed = test_parameters['cyclic_return_speed']['value']
+    cyclic_delay = test_parameters['cyclic_delay']['value']
+    cyclic_return_delay = test_parameters['cyclic_return_delay']['value']
+
+    # PRETENSIONING PHASE PARAMETERS
+    is_pretensioning_set = test_parameters['is_pretensioning_set']
+    if is_pretensioning_set:
+        pretensioning_speed = test_parameters['pretensioning_speed']['value']
+        pretensioning_return_speed = test_parameters['pretensioning_return_speed']['value']
+        pretensioning_return_delay = test_parameters['pretensioning_return_delay']['value']
+        pretensioning_after_delay = test_parameters['pretensioning_after_delay']['value']
+
+    # FAILURE PHASE PARAMETERS
+    is_failure_set = test_parameters['is_failure_set']
+    if is_failure_set:
+        pass
+
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
+
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
+
+    strains = []
+    forces = []
+
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(forces, strains, lw=3)
+
+    xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100) # 10% margin
+    ylim = loadcell_limit
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Strain (%)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Strain')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
+
+    t0 = time.time()
+
+    data_list = []
+    
+    if is_pretensioning_set:
+        # PRETENSIONING PHASE - RUN
+        live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+        batch_index = 0
+        if stop_flag is False:
+            my_controller.run(pretensioning_speed, cyclic_upper_limit, controller.UP)
+            my_loadcell.start_reading()
+
+            with live_table:
+                while my_controller.is_running:
+                    if stop_flag:
+                        my_controller.abort()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0
+                            batch['strain'] = (batch['t'] * pretensioning_speed / initial_gauge_length) * 100
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            line.set_data(strains, forces)
+                            ax.redraw_in_frame()
+                            fig.canvas.blit(ax.bbox)
+                            fig.canvas.flush_events()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+
+        # PRETENSIONING PHASE - RETURN DELAY
+        live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+        batch_index = 0
+        if stop_flag is False:
+            t0_delay = my_controller.hold_torque()
+            my_loadcell.start_reading()
+
+            with live_table:
+                while my_controller.is_holding:
+                    if stop_flag or time.time() - t0_delay >= pretensioning_return_delay:
+                        my_controller.release_torque()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0
+                            batch['strain'] = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            line.set_data(strains, forces)
+                            ax.redraw_in_frame()
+                            fig.canvas.blit(ax.bbox)
+                            fig.canvas.flush_events()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+        
+    utility.delete_last_lines(printed_lines)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
+
+    stop_button.when_released = None
+    return
+
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
     printed_lines = 1
@@ -667,7 +814,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     my_loadcell.start_reading()
 
     with live_table:
-        while my_controller.is_running:
+        while my_controller.is_holding:
             if stop_flag:
                 my_controller.release_torque()
             else:
@@ -713,16 +860,21 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
 def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
     data = None
 
-    if test_parameters['test_type'] is 'monotonic':
+    if test_parameters['test_type'] == 'monotonic':
         data = _start_monotonic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
             stop_button_pin=stop_button_pin
         )
-    elif test_parameters['test_type'] is 'cyclic':
-        print('Not implemented yet.')
-    elif test_parameters['test_type'] is 'static':
+    elif test_parameters['test_type'] == 'cyclic':
+        data = _start_cyclic_test(
+            my_controller=my_controller,
+            my_loadcell=my_loadcell,
+            test_parameters=test_parameters,
+            stop_button_pin=stop_button_pin
+        )
+    elif test_parameters['test_type'] == 'static':
         data = _start_static_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
