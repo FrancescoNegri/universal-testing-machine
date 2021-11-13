@@ -158,11 +158,11 @@ def _generate_data_table(force:float, absolute_position:float, loadcell_limit:fl
 
         if test_parameters is None:
             test_progress = None
-        elif test_parameters['test_type'] is 'monotonic':
+        elif test_parameters['test_type'] == 'monotonic':
             initial_absolute_position = test_parameters['initial_gauge_length']['value'] - test_parameters['clamps_distance']['value']
             test_progress = ((absolute_position - initial_absolute_position) / test_parameters['displacement']['value']) * 100
             test_progress = round(test_progress, 1)
-        elif test_parameters['test_type'] is 'cyclic':
+        elif test_parameters['test_type'] == 'cyclic':
             pass
 
     table = Table(box=box.ROUNDED)
@@ -172,10 +172,10 @@ def _generate_data_table(force:float, absolute_position:float, loadcell_limit:fl
 
     if test_parameters is None:
         table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
-    elif test_parameters['test_type'] is 'monotonic':
+    elif test_parameters['test_type'] == 'monotonic':
         table.add_column('Test progress', justify='center', min_width=12)        
         table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
-    elif test_parameters['test_type'] is 'cyclic':
+    elif test_parameters['test_type'] == 'cyclic':
         pass
 
     return table
@@ -496,10 +496,10 @@ def read_test_parameters(test_type:bool):
     }
 
     while not is_confirmed:
-        if test_type is 'monotonic':
+        if test_type == 'monotonic':
             monotonic_test_parameters = _read_monotonic_test_parameters()
             test_parameters = {**test_parameters, **monotonic_test_parameters}
-        elif test_type is 'cyclic':
+        elif test_type == 'cyclic':
             cyclic_test_parameters = _read_cyclic_test_parameters()
             test_parameters = {**test_parameters, **cyclic_test_parameters}
         elif test_type == 'static':
