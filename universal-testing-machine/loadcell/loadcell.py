@@ -3,8 +3,10 @@ from statistics import mean, median
 import time
 import RPi.GPIO as GPIO
 from loadcell.hx711 import HX711
+import constants
 import scipy
 import scipy.signal
+from scipy import constants as scipy_constants
 from threading import Thread
 import numpy as np
 import pandas as pd
@@ -28,6 +30,7 @@ class LoadCell():
         self._slope = None
         self._y_intercept = None
         self._calibrating_mass = None
+        self._offset = constants.CLAMP_GRAMS
         self._calibration_filename = 'load_cell_calibration.json'
 
         # Reading attributes
@@ -127,6 +130,13 @@ class LoadCell():
         
         return mean_value
 
+    def get_offset(self, is_force:bool = False):
+        offset = self._offset
+        if is_force is True:
+            offset = (offset / 1000) * scipy_constants.g
+        
+        return offset
+
     def start_reading(self):
         self._init_reading_attributes()
         self._read_thread.start()
@@ -140,8 +150,8 @@ class LoadCell():
         self._reset_reading_attributes()
         
         weights = self._slope * readings + self._y_intercept
-        forces = (weights / 1000) * 9.81
-        data = {'t': timings, 'F': forces}
+        forces = (weights / 1000) * scipy_constants.g - self.get_offset(is_force=True)
+        data = {'t': timings, 'readings': readings, 'F': forces}
 
         # TODO: eventualmente aggiungere qui vari filtri e post elaborazione dei dati
         
@@ -187,7 +197,7 @@ class LoadCell():
         batch = scipy.signal.medfilt(batch, kernel_size)
 
         batch = self._slope * batch + self._y_intercept
-        batch = (batch / 1000) * 9.81
+        batch = (batch / 1000) * scipy_constants.g - self.get_offset(is_force=True)
         batch = pd.DataFrame({'t': batch_timings, 'F': batch})
 
         return batch, batch_index

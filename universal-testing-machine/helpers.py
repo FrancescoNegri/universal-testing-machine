@@ -14,6 +14,7 @@ import json
 import scipy.signal
 from gpiozero import Button
 import matplotlib.pyplot as plt
+import constants
 import time
 import pandas as pd
 
@@ -76,11 +77,11 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
     calibrating_mass = inquirer.select(
         message='Select the calibrating mass value [g]:',
         choices=[
-            {'name': '63.352 g (1 N load cell)', 'value': 63.352},
-            {'name': '361.606 g (10 N load cell)', 'value': 361.606},
+            {'name': f'{str(constants.CALIBRATING_MASS_1_N)} g (1 N load cell)', 'value': constants.CALIBRATING_MASS_1_N},
+            {'name': f'{str(constants.CALIBRATING_MASS_10_N)} g (10 N load cell)', 'value': constants.CALIBRATING_MASS_10_N},
             {'name': 'Custom', 'value': None}
         ],
-        default= 361.606 if loadcell_type == 10 else 63.352
+        default= constants.CALIBRATING_MASS_10_N if loadcell_type == 10 else constants.CALIBRATING_MASS_1_N
     ).execute()
 
     if calibrating_mass is None:
@@ -133,7 +134,7 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
-def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float):
+def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float, force_offset:float, test_parameters:dict = None):
     if force is None:
         force = '-'
         loadcell_usage = '-'
@@ -144,19 +145,38 @@ def _generate_data_table(force:float, absolute_position:float, loadcell_limit:fl
         loadcell_usage_style = None
     else:
         force = round(force, 5)
-        loadcell_usage = abs(round((force / loadcell_limit) * 100, 2))
+        if force_offset is None:
+            force_offset = 0
+        loadcell_usage = abs(round(((force + force_offset) / loadcell_limit) * 100, 2))
         loadcell_usage_style = 'red' if loadcell_usage > 85 else None
-    
+
     if absolute_position is None:
         absolute_position = '-'
+        test_progress = '-'
     else:
         absolute_position = round(absolute_position, 2)
+
+        if test_parameters is None:
+            test_progress = None
+        elif test_parameters['test_type'] is 'monotonic':
+            initial_absolute_position = test_parameters['initial_gauge_length']['value'] - test_parameters['clamps_distance']['value']
+            test_progress = ((absolute_position - initial_absolute_position) / test_parameters['displacement']['value']) * 100
+            test_progress = round(test_progress, 1)
+        elif test_parameters['test_type'] is 'cyclic':
+            pass
 
     table = Table(box=box.ROUNDED)
     table.add_column('Force', justify='center', min_width=12)
     table.add_column('Absolute position', justify='center', min_width=20)
     table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
-    table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
+
+    if test_parameters is None:
+        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
+    elif test_parameters['test_type'] is 'monotonic':
+        table.add_column('Test progress', justify='center', min_width=12)        
+        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
+    elif test_parameters['test_type'] is 'cyclic':
+        pass
 
     return table
 
@@ -187,10 +207,11 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     force = None
     absolute_position = None
     loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value'] if my_loadcell.is_calibrated else None
+    force_offset = my_loadcell.get_offset(is_force=True) if my_loadcell.is_calibrated else None
     batch_index = 0
     batch_size = 25
 
-    live_table = Live(_generate_data_table(force, absolute_position, loadcell_limit), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(force, absolute_position, loadcell_limit, force_offset), refresh_per_second=12, transient=True)
     
     with live_table:
         while mode == 0:            
@@ -209,7 +230,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
             else:
                 absolute_position = None
 
-            live_table.update(_generate_data_table(force, absolute_position, loadcell_limit))
+            live_table.update(_generate_data_table(force, absolute_position, loadcell_limit, force_offset))
 
             if down_button.is_active and my_controller._down_endstop.is_active:
                 my_controller.motor_stop()
@@ -230,7 +251,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def _read_monotonic_test_parameters(default_clamps_distance:float = None):
+def _read_monotonic_test_parameters():
     test_parameters = {}
 
     test_parameters['cross_section'] = {
@@ -248,7 +269,7 @@ def _read_monotonic_test_parameters(default_clamps_distance:float = None):
             inquirer.text(
                 message='Insert the clamps distance [mm]:',
                 validate=validator.NumberValidator(float_allowed=True),
-                default=str(default_clamps_distance)
+                default=str(constants.DEFAULT_CLAMPS_DISTANCE)
             ).execute()
         ),
         'unit': 'mm'
@@ -276,7 +297,7 @@ def _read_monotonic_test_parameters(default_clamps_distance:float = None):
 
     return test_parameters
 
-def _read_cyclic_test_parameters(default_clamps_distance:float = None):
+def _read_cyclic_test_parameters():
     test_parameters = {}
 
     test_parameters['cross_section'] = {
@@ -294,7 +315,7 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
             inquirer.text(
                 message='Insert the clamps distance [mm]:',
                 validate=validator.NumberValidator(float_allowed=True),
-                default=str(default_clamps_distance)
+                default=str(constants.DEFAULT_CLAMPS_DISTANCE)
             ).execute()
         ),
         'unit': 'mm'
@@ -464,7 +485,7 @@ def _read_cyclic_test_parameters(default_clamps_distance:float = None):
 
     return test_parameters
 
-def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
+def read_test_parameters(test_type:bool):
     is_confirmed = False
 
     timestamp = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
@@ -475,11 +496,11 @@ def read_test_parameters(test_type:bool, default_clamps_distance:float = None):
     }
 
     while not is_confirmed:
-        if test_type == 'monotonic':
-            monotonic_test_parameters = _read_monotonic_test_parameters(default_clamps_distance)
+        if test_type is 'monotonic':
+            monotonic_test_parameters = _read_monotonic_test_parameters()
             test_parameters = {**test_parameters, **monotonic_test_parameters}
-        elif test_type == 'cyclic':
-            cyclic_test_parameters = _read_cyclic_test_parameters(default_clamps_distance)
+        elif test_type is 'cyclic':
+            cyclic_test_parameters = _read_cyclic_test_parameters()
             test_parameters = {**test_parameters, **cyclic_test_parameters}
         elif test_type == 'static':
             pass
@@ -556,7 +577,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     fig.canvas.draw()
     plt.show(block=False)
 
-    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
     _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
     my_loadcell.start_reading()
@@ -585,7 +606,9 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None, 
                         absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
-                        loadcell_limit=loadcell_limit
+                        loadcell_limit=loadcell_limit,
+                        force_offset=my_loadcell.get_offset(is_force=True),
+                        test_parameters=test_parameters
                     )
                 )
 
@@ -785,7 +808,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     fig.canvas.draw()
     plt.show(block=False)
 
-    live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+    live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
     t0 = my_controller.hold_torque()
     my_loadcell.start_reading()
@@ -817,7 +840,8 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                     _generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None,
                         absolute_position=None,
-                        loadcell_limit=loadcell_limit
+                        loadcell_limit=loadcell_limit,
+                        force_offset=my_loadcell.get_offset(is_force=True)
                     )
                 )
 
