@@ -13,10 +13,10 @@ from loadcell import loadcell
 import json
 import scipy.signal
 from gpiozero import Button
-import matplotlib.pyplot as plt
 import constants
 import time
-import pandas as pd
+import pyqtgraph as pg
+from pyqtgraph.functions import mkPen
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
@@ -562,21 +562,19 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     forces = []
     batch_index = 0
 
-    fig = plt.figure(facecolor='#DEDEDE')
-    ax = plt.axes()
-    line, = ax.plot(forces, strains, lw=3)
+    plot_widget = pg.plot(title='Monotonic Test Plot')
+    plot_widget.setMouseEnabled(x=False, y=False)
+    plot_item = plot_widget.getPlotItem()
+    plot_data = plot_item.plot()
+    plot_data.opts['useCache'] = True
 
     xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
     ylim = loadcell_limit
-    ax.set_xlim([0, xlim])
-    ax.set_ylim([0, ylim])
-    ax.set_xlabel('Strain (%)')
-    ax.set_ylabel('Force (N)')
-    ax.set_title('Force vs. Strain')
+    plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
+    plot_item.setLabel('bottom', 'Strain', '%')
+    plot_item.setLabel('left', 'Force', 'N')
+    plot_item.setTitle('Force vs. Strain')
     
-    fig.canvas.draw()
-    plt.show(block=False)
-
     live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
     _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
@@ -595,10 +593,9 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
                     forces.extend(batch['F'])
                     strains.extend(batch['strain'])
 
-                    line.set_data(strains, forces)
-                    ax.redraw_in_frame()
-                    fig.canvas.blit(ax.bbox)
-                    fig.canvas.flush_events()
+                    plot_data.setData(strains, forces)
+
+                    pg.Qt.QtGui.QApplication.processEvents()
                 else:
                     pass
                     
@@ -617,6 +614,11 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
 
     data = my_loadcell.stop_reading()
     stop_button.when_released = None
+
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...')       
+    pg.exec()
+    utility.delete_last_lines(n_lines=1)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')   
 
     data['t'] = data['t'] - t0
     data['displacement'] = data['t'] * linear_speed
@@ -671,23 +673,16 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     stop_button = Button(pin=stop_button_pin)
     stop_button.when_released = lambda: _switch_stop_flag()
 
-    strains = []
-    forces = []
-
-    fig = plt.figure(facecolor='#DEDEDE')
-    ax = plt.axes()
-    line, = ax.plot(forces, strains, lw=3)
+    plot_widget = pg.plot(title='Cyclic Test Plot')
+    plot_widget.setMouseEnabled(x=False, y=False)
+    plot_item = plot_widget.getPlotItem()
 
     xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100) # 10% margin
     ylim = loadcell_limit
-    ax.set_xlim([0, xlim])
-    ax.set_ylim([0, ylim])
-    ax.set_xlabel('Strain (%)')
-    ax.set_ylabel('Force (N)')
-    ax.set_title('Force vs. Strain')
-    
-    fig.canvas.draw()
-    plt.show(block=False)
+    plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
+    plot_item.setLabel('bottom', 'Strain', '%')
+    plot_item.setLabel('left', 'Force', 'N')
+    plot_item.setTitle('Force vs. Strain')
 
     t0 = time.time()
 
@@ -695,8 +690,16 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     
     if is_pretensioning_set:
         # PRETENSIONING PHASE - RUN
-        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+        strains = []
+        forces = []
         batch_index = 0
+
+        plot_data_ppr = plot_item.plot(pen=None, symbol='x', symbolSize=4)
+        plot_data_ppr.opts['useCache'] = True
+        plot_data_ppr.setSymbolPen(mkPen('#FF0000'))
+
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
         if stop_flag is False:
             my_controller.run(pretensioning_speed, cyclic_upper_limit, controller.UP)
             my_loadcell.start_reading()
@@ -714,10 +717,9 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
 
-                            line.set_data(strains, forces)
-                            ax.redraw_in_frame()
-                            fig.canvas.blit(ax.bbox)
-                            fig.canvas.flush_events()
+                            plot_data_ppr.setData(strains, forces)
+
+                            pg.Qt.QtGui.QApplication.processEvents()
                         else:
                             pass
                             
@@ -734,8 +736,16 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_list.append(my_loadcell.stop_reading())
 
         # PRETENSIONING PHASE - RETURN DELAY
-        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+        strains = []
+        forces = []
         batch_index = 0
+
+        plot_data_pprd = plot_item.plot(pen=None, symbol='o', symbolSize=4)
+        plot_data_pprd.opts['useCache'] = True
+        plot_data_pprd.setSymbolPen(mkPen('#00FF00'))
+
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
         if stop_flag is False:
             t0_delay = my_controller.hold_torque()
             my_loadcell.start_reading()
@@ -753,10 +763,9 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
 
-                            line.set_data(strains, forces)
-                            ax.redraw_in_frame()
-                            fig.canvas.blit(ax.bbox)
-                            fig.canvas.flush_events()
+                            plot_data_pprd.setData(strains, forces)
+
+                            pg.Qt.QtGui.QApplication.processEvents()
                         else:
                             pass
                             
@@ -776,6 +785,12 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
     stop_button.when_released = None
+
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...')       
+    pg.exec()
+    utility.delete_last_lines(n_lines=1)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')   
+
     return
 
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
@@ -797,20 +812,18 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     forces = []
     batch_index = 0
 
-    fig = plt.figure(facecolor='#DEDEDE')
-    ax = plt.axes()
-    line, = ax.plot(timings, forces, lw=3)
+    plot_widget = pg.plot(title='Static Test Plot')
+    plot_widget.setMouseEnabled(x=False, y=False)
+    plot_item = plot_widget.getPlotItem()
+    plot_data = plot_item.plot()
+    plot_data.opts['useCache'] = True
 
     xlim = 30 # in seconds
     ylim = loadcell_limit
-    ax.set_xlim([0, xlim])
-    ax.set_ylim([0, ylim])
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Force (N)')
-    ax.set_title('Force vs. Time')
-    
-    fig.canvas.draw()
-    plt.show(block=False)
+    plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
+    plot_item.setLabel('bottom', 'Time', 's')
+    plot_item.setLabel('left', 'Force', 'N')
+    plot_item.setTitle('Force vs. Time')
 
     live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
@@ -830,13 +843,13 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                     timings.extend(batch['t'])
 
                     if batch['t'].iloc[-1] > xlim:
-                        ax.set_xlim([(xlim / 2), (xlim / 2) + batch['t'].iloc[-1]])
-                        xlim = (xlim / 2) + batch['t'].iloc[-1]
+                        new_xlim = (xlim / 2) + batch['t'].iloc[-1]
+                        plot_item.getViewBox().setXRange((xlim / 2), new_xlim)
+                        xlim = new_xlim
 
-                    line.set_data(timings, forces)
-                    ax.redraw_in_frame()
-                    fig.canvas.blit(ax.bbox)
-                    fig.canvas.flush_events()
+                    plot_data.setData(timings, forces)
+
+                    pg.Qt.QtGui.QApplication.processEvents()
                 else:
                     pass
 
@@ -854,6 +867,11 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
 
     data = my_loadcell.stop_reading()
     stop_button.when_released = None
+
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...')       
+    pg.exec()
+    utility.delete_last_lines(n_lines=1)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')   
 
     data['t'] = data['t'] - t0
     data['F_raw'] = data['F']
