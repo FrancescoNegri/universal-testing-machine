@@ -800,20 +800,18 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     forces = []
     batch_index = 0
 
-    fig = plt.figure(facecolor='#DEDEDE')
-    ax = plt.axes()
-    line, = ax.plot(timings, forces, lw=3)
+    plot_widget = pg.plot(title='Static Test Plot')
+    plot_widget.setMouseEnabled(x=False, y=False)
+    plot_item = plot_widget.getPlotItem()
+    plot_data = plot_item.plot()
+    plot_data.opts['useCache'] = True
 
     xlim = 30 # in seconds
     ylim = loadcell_limit
-    ax.set_xlim([0, xlim])
-    ax.set_ylim([0, ylim])
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Force (N)')
-    ax.set_title('Force vs. Time')
-    
-    fig.canvas.draw()
-    plt.show(block=False)
+    plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
+    plot_item.setLabel('bottom', 'Time', 's')
+    plot_item.setLabel('left', 'Force', 'N')
+    plot_item.setTitle('Force vs. Time')
 
     live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
@@ -833,13 +831,13 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
                     timings.extend(batch['t'])
 
                     if batch['t'].iloc[-1] > xlim:
-                        ax.set_xlim([(xlim / 2), (xlim / 2) + batch['t'].iloc[-1]])
-                        xlim = (xlim / 2) + batch['t'].iloc[-1]
+                        new_xlim = (xlim / 2) + batch['t'].iloc[-1]
+                        plot_item.getViewBox().setXRange((xlim / 2), new_xlim)
+                        xlim = new_xlim
 
-                    line.set_data(timings, forces)
-                    ax.redraw_in_frame()
-                    fig.canvas.blit(ax.bbox)
-                    fig.canvas.flush_events()
+                    plot_data.setData(timings, forces)
+
+                    pg.Qt.QtGui.QApplication.processEvents()
                 else:
                     pass
 
@@ -857,6 +855,11 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
 
     data = my_loadcell.stop_reading()
     stop_button.when_released = None
+
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...')       
+    pg.exec()
+    utility.delete_last_lines(n_lines=1)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')   
 
     data['t'] = data['t'] - t0
     data['F_raw'] = data['F']
