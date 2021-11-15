@@ -7,6 +7,7 @@ A Raspberry Pi based Universal Testing Machine to perform a number of tasks rela
 - [Universal Testing Machine](#universal-testing-machine)
   - [Table of Contents](#table-of-contents)
   - [Requirements](#requirements)
+  - [- `PyQt5 15.12.2 (python3-pyqt5)`](#--pyqt5-15122-python3-pyqt5)
   - [Installation & Usage](#installation--usage)
   - [Software Features](#software-features)
     - [Monotonic Test](#monotonic-test)
@@ -17,12 +18,13 @@ A Raspberry Pi based Universal Testing Machine to perform a number of tasks rela
 ## Requirements
 The following packages are to be installed through Raspberry Pi `apt` package manager:
 - `SciPy 1.6.0 (python3-scipy)`
-- `matplotlib 3.3.4 (python3-matplotlib)`
 - `pandas 1.1.5 (python3-pandas)`
+- `PyQt5 15.12.2 (python3-pyqt5)`
 ---
 The following packages are to be installed through `pip`:
 - `InquirerPy 0.2.4`
 - `rich 10.13.0`
+- `pyqtgraph 0.12.3`
 
 ## Installation & Usage
 
