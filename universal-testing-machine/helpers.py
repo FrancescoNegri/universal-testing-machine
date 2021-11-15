@@ -16,7 +16,8 @@ from gpiozero import Button
 import matplotlib.pyplot as plt
 import constants
 import time
-import pandas as pd
+import pyqtgraph as pg
+from pyqtgraph.functions import mkPen
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
