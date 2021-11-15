@@ -13,7 +13,6 @@ from loadcell import loadcell
 import json
 import scipy.signal
 from gpiozero import Button
-import matplotlib.pyplot as plt
 import constants
 import time
 import pyqtgraph as pg
