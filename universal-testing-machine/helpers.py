@@ -746,6 +746,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         forces = []
         batch_index = 0
 
+        fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
         if stop_flag is False:
@@ -759,8 +761,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                     else:
                         while my_loadcell.is_batch_ready(batch_index):
                             batch, batch_index = my_loadcell.get_batch(batch_index)
-                            batch['t'] = batch['t'] - t0
-                            batch['strain'] = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+                            batch['strain'] = fixed_strain
 
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
