@@ -685,7 +685,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Strain')
 
-    t0 = time.time()
+    t0 = []
 
     data_list = []
     
@@ -704,8 +704,9 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
         if stop_flag is False:
-            my_controller.run(pretensioning_speed, cyclic_upper_limit, controller.UP)
+            _, _, _t0 = my_controller.run(pretensioning_speed, cyclic_upper_limit, controller.UP)
             my_loadcell.start_reading()
+            t0.append(_t0)
 
             with live_table:
                 while my_controller.is_running:
@@ -714,6 +715,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                     else:
                         while my_loadcell.is_batch_ready(batch_index):
                             batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0[-1]
                             batch['strain'] = ((batch['t'] * pretensioning_speed + reference_absolute_position - initial_absolute_position) / initial_gauge_length) * 100
 
                             forces.extend(batch['F'])
@@ -751,16 +753,18 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
         if stop_flag is False:
-            t0_delay = my_controller.hold_torque()
+            _t0 = my_controller.hold_torque()
             my_loadcell.start_reading()
+            t0.append(_t0)
 
             with live_table:
                 while my_controller.is_holding:
-                    if stop_flag or time.time() - t0_delay >= pretensioning_return_delay:
+                    if stop_flag or time.time() - t0[-1] >= pretensioning_return_delay:
                         my_controller.release_torque()
                     else:
                         while my_loadcell.is_batch_ready(batch_index):
                             batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0[-1]
                             batch['strain'] = fixed_strain
 
                             forces.extend(batch['F'])
