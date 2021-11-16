@@ -558,15 +558,9 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     stop_button = Button(pin=stop_button_pin)
     stop_button.when_released = lambda: _switch_stop_flag()
 
-    strains = []
-    forces = []
-    batch_index = 0
-
     plot_widget = pg.plot(title='Monotonic Test Plot')
     plot_widget.setMouseEnabled(x=False, y=False)
     plot_item = plot_widget.getPlotItem()
-    plot_data = plot_item.plot()
-    plot_data.opts['useCache'] = True
 
     xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
     ylim = loadcell_limit
@@ -574,6 +568,13 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     plot_item.setLabel('bottom', 'Strain', '%')
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Strain')
+
+    plot_data = plot_item.plot()
+    plot_data.opts['useCache'] = True
+
+    strains = []
+    forces = []
+    batch_index = 0
     
     live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
@@ -690,13 +691,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     
     if is_pretensioning_set:
         # PRETENSIONING PHASE - RUN
-        strains = []
-        forces = []
-        batch_index = 0
-
         plot_data_ppr = plot_item.plot(pen=None, symbol='x', symbolSize=4)
         plot_data_ppr.opts['useCache'] = True
         plot_data_ppr.setSymbolPen(mkPen('#FF0000'))
+
+        strains = []
+        forces = []
+        batch_index = 0
 
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
@@ -736,13 +737,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_list.append(my_loadcell.stop_reading())
 
         # PRETENSIONING PHASE - RETURN DELAY
-        strains = []
-        forces = []
-        batch_index = 0
-
         plot_data_pprd = plot_item.plot(pen=None, symbol='o', symbolSize=4)
         plot_data_pprd.opts['useCache'] = True
         plot_data_pprd.setSymbolPen(mkPen('#00FF00'))
+
+        strains = []
+        forces = []
+        batch_index = 0
 
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
@@ -808,15 +809,9 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     stop_button = Button(pin=stop_button_pin)
     stop_button.when_released = lambda: _switch_stop_flag()
 
-    timings = []
-    forces = []
-    batch_index = 0
-
     plot_widget = pg.plot(title='Static Test Plot')
     plot_widget.setMouseEnabled(x=False, y=False)
     plot_item = plot_widget.getPlotItem()
-    plot_data = plot_item.plot()
-    plot_data.opts['useCache'] = True
 
     xlim = 30 # in seconds
     ylim = loadcell_limit
@@ -824,6 +819,13 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_item.setLabel('bottom', 'Time', 's')
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Time')
+
+    plot_data = plot_item.plot()
+    plot_data.opts['useCache'] = True
+
+    timings = []
+    forces = []
+    batch_index = 0
 
     live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
