@@ -690,10 +690,10 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     data_list = []
     
     if is_pretensioning_set:
-        # PRETENSIONING PHASE - RUN
-        plot_data_ppr = plot_item.plot(pen=None, symbol='x', symbolSize=4)
-        plot_data_ppr.opts['useCache'] = True
-        plot_data_ppr.setSymbolPen(mkPen('#FF0000'))
+        # PRETENSIONING PHASE - GO
+        plot_data_ppg = plot_item.plot(pen=None, symbol='x', symbolSize=4)
+        plot_data_ppg.opts['useCache'] = True
+        plot_data_ppg.setSymbolPen(mkPen('#FF0000'))
 
         strains = []
         forces = []
@@ -718,7 +718,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
 
-                            plot_data_ppr.setData(strains, forces)
+                            plot_data_ppg.setData(strains, forces)
 
                             pg.Qt.QtGui.QApplication.processEvents()
                         else:
