@@ -6,6 +6,7 @@ A Raspberry Pi based Universal Testing Machine to perform a number of tasks rela
 
 - [Universal Testing Machine](#universal-testing-machine)
   - [Table of Contents](#table-of-contents)
+  - [Requirements](#requirements)
   - [Installation & Usage](#installation--usage)
   - [Software Features](#software-features)
     - [Monotonic Test](#monotonic-test)
@@ -13,22 +14,15 @@ A Raspberry Pi based Universal Testing Machine to perform a number of tasks rela
     - [Static Test](#static-test)
   - [Hardware List](#hardware-list)
 
-Requirements
-
-The following packages are required:
-
-- Python 3.7
-  
-- SciPy 1.7.1
-  
-- Pandas 1.3.3
-  
-- Matplotlib 3.4.3
-  
-- InquirerPy 0.2.4
-  
-- Rich 10.11.0
-  
+## Requirements
+The following packages are to be installed through Raspberry Pi `apt` package manager:
+- `SciPy 1.6.0 (python3-scipy)`
+- `matplotlib 3.3.4 (python3-matplotlib)`
+- `pandas 1.1.5 (python3-pandas)`
+---
+The following packages are to be installed through `pip`:
+- `InquirerPy 0.2.4`
+- `rich 10.13.0`
 
 ## Installation & Usage
 

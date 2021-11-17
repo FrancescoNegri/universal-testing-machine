@@ -3,6 +3,7 @@ from statistics import mean, median
 import time
 import RPi.GPIO as GPIO
 from loadcell.hx711 import HX711
+import constants
 import scipy
 import scipy.signal
 from scipy import constants as scipy_constants
@@ -10,7 +11,6 @@ from threading import Thread
 import numpy as np
 import pandas as pd
 import json
-import constants
 
 #HACK#
 import random

@@ -30,6 +30,7 @@ class LinearController():
 
         # Running attributes
         self.is_running = False
+        self.is_holding = False
         self._running_direction = None
         self._running_timer = None
         self._rotational_speed = None   
@@ -150,6 +151,7 @@ class LinearController():
         values after each run.
         '''
         self.is_running = False
+        self.is_holding = False
         self._running_direction = None
         self._running_timer = None
         self._rotational_speed = None
@@ -374,7 +376,7 @@ class LinearController():
 
     def hold_torque(self):
         self._motor.hold_torque()
-        self.is_running = True
+        self.is_holding = True
         self._started_at = time.time()
 
         return self._started_at
