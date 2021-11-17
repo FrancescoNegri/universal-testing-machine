@@ -62,7 +62,7 @@ def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCel
 
 def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
     loadcell_type = inquirer.select(
-        message='Selected the desired loadcell:',
+        message='Select the desired loadcell:',
         choices=[
             {'name': '1 N', 'value': 1},
             {'name': '10 N', 'value': 10}
