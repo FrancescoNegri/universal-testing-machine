@@ -569,8 +569,9 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Strain')
 
-    plot_data = plot_item.plot()
+    plot_data = plot_item.plot(pen=None, symbol='x', symbolSize=4)
     plot_data.opts['useCache'] = True
+    plot_data.setSymbolPen(mkPen('#FFFFFF'))
 
     strains = []
     forces = []
@@ -875,8 +876,9 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Time')
 
-    plot_data = plot_item.plot()
+    plot_data = plot_item.plot(pen=None, symbol='x', symbolSize=4)
     plot_data.opts['useCache'] = True
+    plot_data.setSymbolPen(mkPen('#FFFFFF'))
 
     timings = []
     forces = []
