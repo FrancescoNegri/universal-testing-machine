@@ -837,6 +837,56 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                         )
 
             data_list.append(my_loadcell.stop_reading())
+
+
+        # PRETENSIONING PHASE - AFTER DELAY
+        plot_data_ppad = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
+        plot_data_ppad.opts['useCache'] = True
+        plot_data_ppad.setSymbolPen(mkPen('#FFFF00'))
+
+        strains = []
+        forces = []
+        batch_index = 0
+
+        fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
+        if stop_flag is False:
+            _t0 = my_controller.hold_torque()
+            my_loadcell.start_reading()
+            t0.append(_t0)
+
+            with live_table:
+                while my_controller.is_holding:
+                    if stop_flag or time.time() - t0[-1] >= pretensioning_return_delay:
+                        my_controller.release_torque()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0[-1]
+                            batch['strain'] = fixed_strain
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            plot_data_ppad.setData(strains, forces)
+
+                            pg.Qt.QtGui.QApplication.processEvents()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit,
+                                force_offset=my_loadcell.get_offset(is_force=True),
+                                test_parameters=test_parameters
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
         
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
