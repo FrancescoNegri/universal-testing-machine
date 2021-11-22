@@ -569,7 +569,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Strain')
 
-    plot_data = plot_item.plot(pen=None, symbol='x', symbolSize=4)
+    plot_data = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
     plot_data.opts['useCache'] = True
     plot_data.setSymbolPen(mkPen('#FFFFFF'))
 
@@ -692,7 +692,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     
     if is_pretensioning_set:
         # PRETENSIONING PHASE - GO
-        plot_data_ppg = plot_item.plot(pen=None, symbol='x', symbolSize=4)
+        plot_data_ppg = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
         plot_data_ppg.opts['useCache'] = True
         plot_data_ppg.setSymbolPen(mkPen('#FF0000'))
 
@@ -741,7 +741,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_list.append(my_loadcell.stop_reading())
 
         # PRETENSIONING PHASE - RETURN DELAY
-        plot_data_pprd = plot_item.plot(pen=None, symbol='o', symbolSize=4)
+        plot_data_pprd = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
         plot_data_pprd.opts['useCache'] = True
         plot_data_pprd.setSymbolPen(mkPen('#00FF00'))
 
@@ -790,7 +790,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_list.append(my_loadcell.stop_reading())
 
         # PRETENSIONING PHASE - RETURN
-        plot_data_ppr = plot_item.plot(pen=None, symbol='x', symbolSize=4)
+        plot_data_ppr = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
         plot_data_ppr.opts['useCache'] = True
         plot_data_ppr.setSymbolPen(mkPen('#0000FF'))
 
@@ -876,7 +876,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Time')
 
-    plot_data = plot_item.plot(pen=None, symbol='x', symbolSize=4)
+    plot_data = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
     plot_data.opts['useCache'] = True
     plot_data.setSymbolPen(mkPen('#FFFFFF'))
 
