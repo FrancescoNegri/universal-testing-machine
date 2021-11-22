@@ -678,6 +678,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_widget = pg.plot(title='Cyclic Test Plot')
     plot_widget.setMouseEnabled(x=False, y=False)
     plot_item = plot_widget.getPlotItem()
+    plot_data = []
 
     xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100) # 10% margin
     ylim = loadcell_limit
@@ -692,9 +693,9 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     
     if is_pretensioning_set:
         # PRETENSIONING PHASE - GO
-        plot_data_ppg = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
-        plot_data_ppg.opts['useCache'] = True
-        plot_data_ppg.setSymbolPen(mkPen('#FF0000'))
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#FF0000'))
 
         strains = []
         forces = []
@@ -722,7 +723,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
 
-                            plot_data_ppg.setData(strains, forces)
+                            plot_data[-1].setData(strains, forces)
 
                             pg.Qt.QtGui.QApplication.processEvents()
                         else:
@@ -741,9 +742,9 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_list.append(my_loadcell.stop_reading())
 
         # PRETENSIONING PHASE - RETURN DELAY
-        plot_data_pprd = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
-        plot_data_pprd.opts['useCache'] = True
-        plot_data_pprd.setSymbolPen(mkPen('#00FF00'))
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#00FF00'))
 
         strains = []
         forces = []
@@ -771,7 +772,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
 
-                            plot_data_pprd.setData(strains, forces)
+                            plot_data[-1].setData(strains, forces)
 
                             pg.Qt.QtGui.QApplication.processEvents()
                         else:
@@ -790,9 +791,9 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_list.append(my_loadcell.stop_reading())
 
         # PRETENSIONING PHASE - RETURN
-        plot_data_ppr = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
-        plot_data_ppr.opts['useCache'] = True
-        plot_data_ppr.setSymbolPen(mkPen('#0000FF'))
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#0000FF'))
 
         strains = []
         forces = []
@@ -820,7 +821,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
 
-                            plot_data_ppr.setData(strains, forces)
+                            plot_data[-1].setData(strains, forces)
 
                             pg.Qt.QtGui.QApplication.processEvents()
                         else:
@@ -840,9 +841,10 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
 
 
         # PRETENSIONING PHASE - AFTER DELAY
-        plot_data_ppad = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
-        plot_data_ppad.opts['useCache'] = True
-        plot_data_ppad.setSymbolPen(mkPen('#FFFF00'))
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#FFFF00'))
+
 
         strains = []
         forces = []
@@ -870,7 +872,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                             forces.extend(batch['F'])
                             strains.extend(batch['strain'])
 
-                            plot_data_ppad.setData(strains, forces)
+                            plot_data[-1].setData(strains, forces)
 
                             pg.Qt.QtGui.QApplication.processEvents()
                         else:
@@ -887,7 +889,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                         )
 
             data_list.append(my_loadcell.stop_reading())
-        
+    
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
