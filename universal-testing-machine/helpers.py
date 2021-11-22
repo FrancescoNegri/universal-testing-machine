@@ -847,6 +847,106 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         plot_data[-1].opts['useCache'] = True
         plot_data[-1].setSymbolPen(mkPen('#FFFF00'))
 
+        strains = []
+        forces = []
+        batch_index = 0
+
+        fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
+        if stop_flag is False:
+            _t0 = my_controller.hold_torque()
+            my_loadcell.start_reading()
+            t0.append(_t0)
+
+            with live_table:
+                while my_controller.is_holding:
+                    if stop_flag or time.time() - t0[-1] >= pretensioning_return_delay:
+                        my_controller.release_torque()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0[-1]
+                            batch['strain'] = fixed_strain
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            plot_data[-1].setData(strains, forces)
+
+                            pg.Qt.QtGui.QApplication.processEvents()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit,
+                                force_offset=my_loadcell.get_offset(is_force=True),
+                                test_parameters=test_parameters
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+
+    # CYCLIC PHASE
+    for _ in range(int(cycles_number)):
+        # CYCLIC PHASE - GO
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#FF00FF'))
+
+        strains = []
+        forces = []
+        batch_index = 0
+
+        reference_absolute_position = my_controller.get_absolute_position()
+
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
+        if stop_flag is False:
+            displacement = (cyclic_upper_limit + initial_absolute_position) - reference_absolute_position
+            _, _, _t0 = my_controller.run(cyclic_speed, displacement, controller.UP)
+            my_loadcell.start_reading()
+            t0.append(_t0)
+
+            with live_table:
+                while my_controller.is_running:
+                    if stop_flag:
+                        my_controller.abort()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0[-1]
+                            batch['strain'] = ((batch['t'] * cyclic_speed + reference_absolute_position - initial_absolute_position) / initial_gauge_length) * 100
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            plot_data[-1].setData(strains, forces)
+
+                            pg.Qt.QtGui.QApplication.processEvents()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit,
+                                force_offset=my_loadcell.get_offset(is_force=True),
+                                test_parameters=test_parameters
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+    
+        # CYCLIC PHASE - RETURN DELAY
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#00FF00'))
 
         strains = []
         forces = []
@@ -891,6 +991,106 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                         )
 
             data_list.append(my_loadcell.stop_reading())
+
+        # CYCLIC PHASE - RETURN
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#00FFFF'))
+
+        strains = []
+        forces = []
+        batch_index = 0
+
+        reference_absolute_position = my_controller.get_absolute_position()
+
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
+        if stop_flag is False:
+            displacement = reference_absolute_position - (initial_absolute_position + cyclic_lower_limit)
+            _, _, _t0 = my_controller.run(cyclic_return_speed, displacement, controller.DOWN)
+            my_loadcell.start_reading()
+            t0.append(_t0)
+
+            with live_table:
+                while my_controller.is_running:
+                    if stop_flag:
+                        my_controller.abort()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0[-1]
+                            batch['strain'] = ((batch['t'] * -cyclic_return_speed + reference_absolute_position - initial_absolute_position) / initial_gauge_length) * 100
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            plot_data[-1].setData(strains, forces)
+
+                            pg.Qt.QtGui.QApplication.processEvents()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit,
+                                force_offset=my_loadcell.get_offset(is_force=True),
+                                test_parameters=test_parameters
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+
+        # CYCLIC PHASE - DELAY
+        plot_data.append(plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE))
+        plot_data[-1].opts['useCache'] = True
+        plot_data[-1].setSymbolPen(mkPen('#00FF00'))
+
+        strains = []
+        forces = []
+        batch_index = 0
+
+        fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+
+        live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
+        if stop_flag is False:
+            _t0 = my_controller.hold_torque()
+            my_loadcell.start_reading()
+            t0.append(_t0)
+
+            with live_table:
+                while my_controller.is_holding:
+                    if stop_flag or time.time() - t0[-1] >= pretensioning_return_delay:
+                        my_controller.release_torque()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0[-1]
+                            batch['strain'] = fixed_strain
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            plot_data[-1].setData(strains, forces)
+
+                            pg.Qt.QtGui.QApplication.processEvents()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit,
+                                force_offset=my_loadcell.get_offset(is_force=True),
+                                test_parameters=test_parameters
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+
     
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
