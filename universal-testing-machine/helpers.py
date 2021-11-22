@@ -706,7 +706,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
         if stop_flag is False:
-            _, _, _t0 = my_controller.run(pretensioning_speed, cyclic_upper_limit, controller.UP)
+            displacement = (cyclic_upper_limit + initial_absolute_position) - reference_absolute_position
+            _, _, _t0 = my_controller.run(pretensioning_speed, displacement, controller.UP)
             my_loadcell.start_reading()
             t0.append(_t0)
 
@@ -804,7 +805,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
         if stop_flag is False:
-            _, _, _t0 = my_controller.run(pretensioning_return_speed, cyclic_upper_limit - cyclic_lower_limit, controller.DOWN)
+            displacement = reference_absolute_position - (initial_absolute_position + cyclic_lower_limit)
+            _, _, _t0 = my_controller.run(pretensioning_return_speed, displacement, controller.DOWN)
             my_loadcell.start_reading()
             t0.append(_t0)
 
