@@ -7,7 +7,6 @@ A Raspberry Pi based Universal Testing Machine to perform a number of tasks rela
 - [Universal Testing Machine](#universal-testing-machine)
   - [Table of Contents](#table-of-contents)
   - [Requirements](#requirements)
-  - [- `PyQt5 5.12.2+dfsg-3 (python3-pyqt5)`](#--pyqt5-5122dfsg-3-python3-pyqt5)
   - [Installation & Usage](#installation--usage)
   - [Software Features](#software-features)
     - [Monotonic Test](#monotonic-test)
@@ -20,7 +19,7 @@ The following packages are to be installed through Raspberry Pi `apt` package ma
 - `SciPy 1.6.0-2 (python3-scipy)`
 - `pandas 1.1.5+dfsg-2 (python3-pandas)`
 - `PyQt5 5.12.2+dfsg-3 (python3-pyqt5)`
----
+
 The following packages are to be installed through `pip`:
 - `InquirerPy 0.2.4`
 - `rich 10.13.0`
