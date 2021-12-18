@@ -933,8 +933,12 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...')       
     pg.exec()
     utility.delete_last_lines(n_lines=1)
-    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')   
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')
 
+    data_list = list(filter(None.__ne__, data_list))
+    for data_obj in data_list:
+        data_obj['data']['t'] = data_obj['data']['t'] - data_list[0]['t0']
+    
     return
 
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
