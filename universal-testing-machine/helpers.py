@@ -614,7 +614,7 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
 def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, plot_item, plot_color, delay, stop_flag, stop_button, initial_absolute_position, test_parameters):
     data_obj = None
 
-    if stop_flag is False:
+    if stop_flag is False and delay != 0:
         t0 = None
         data = None
 
