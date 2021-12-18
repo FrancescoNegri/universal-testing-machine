@@ -565,8 +565,8 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
 
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
-        _, _, t0 = my_controller.run(speed, displacement, direction)
         my_loadcell.start_reading()
+        _, _, t0 = my_controller.run(speed, displacement, direction)
 
         if direction == controller.DOWN:
             speed = -speed
@@ -640,8 +640,8 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
 
         live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
-        t0 = my_controller.hold_torque()
         my_loadcell.start_reading()
+        t0 = my_controller.hold_torque()
 
         with live_table:
             while my_controller.is_holding:
