@@ -860,7 +860,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         data_list.append(data_obj)
 
     # CYCLIC PHASE
-    for _ in range(int(cycles_number)):
+    for cycle_idx in range(int(cycles_number)):
         # CYCLIC PHASE - GO
         reference_absolute_position = my_controller.get_absolute_position()
         data_obj, stop_flag = _run_go(
@@ -912,18 +912,19 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         data_list.append(data_obj)
         
         # CYCLIC PHASE - DELAY
-        data_obj, stop_flag = _run_delay(
-            my_controller,
-            my_loadcell,
-            plot_item=plot_item,
-            plot_color='#00FF00',
-            delay=cyclic_delay,
-            stop_flag=stop_flag,
-            stop_button=stop_button,
-            initial_absolute_position=initial_absolute_position,
-            test_parameters=test_parameters
-        )
-        data_list.append(data_obj)
+        if cycle_idx < (int(cycles_number) - 1):
+            data_obj, stop_flag = _run_delay(
+                my_controller,
+                my_loadcell,
+                plot_item=plot_item,
+                plot_color='#00FF00',
+                delay=cyclic_delay,
+                stop_flag=stop_flag,
+                stop_button=stop_button,
+                initial_absolute_position=initial_absolute_position,
+                test_parameters=test_parameters
+            )
+            data_list.append(data_obj)
 
     
     utility.delete_last_lines(printed_lines)
