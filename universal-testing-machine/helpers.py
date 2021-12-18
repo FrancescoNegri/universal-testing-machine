@@ -900,7 +900,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             my_loadcell,
             plot_item=plot_item,
             plot_color='#00FFFF',
-            speed=cyclic_speed,
+            speed=cyclic_return_speed,
             displacement=reference_absolute_position - (initial_absolute_position + cyclic_lower_limit),
             direction=controller.DOWN,
             stop_flag=stop_flag,
