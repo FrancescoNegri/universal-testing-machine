@@ -17,6 +17,7 @@ import constants
 import time
 import pyqtgraph as pg
 from pyqtgraph.functions import mkPen
+import pandas as pd
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
@@ -538,13 +539,49 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
 
     return
 
+def _postprocess_data(data, test_parameters:dict, filter_kernel_size:int = 21):
+    cross_section = test_parameters['cross_section']['value']
+    initial_gauge_length = test_parameters['initial_gauge_length']['value']
+
+    def _postprocess_single_dataframe(df, t0):
+        # Compute time
+        df['t'] = df['t'] - t0
+
+        # Add raw columns
+        df['F_raw'] = df['F']
+        df['stress_raw'] = df['F_raw'] / cross_section
+
+        # Drop replaced columns
+        df.drop(columns='F')
+
+        # Add filtered columns
+        df['F_med' + str(filter_kernel_size)] = scipy.signal.medfilt(df['F_raw'], filter_kernel_size)
+        df['stress_med' + str(filter_kernel_size)] = df['F_med' + str(filter_kernel_size)] / cross_section
+
+        # Add other meaningful data
+        df.loc[df.index[0], 'cross_section'] = cross_section
+        df.loc[df.index[0], 'initial_gauge_length'] = initial_gauge_length
+
+        return df
+
+    if isinstance(data, list):
+        data_list = list(filter(None.__ne__, data))
+        t0 = data_list[0]['t'][0]
+
+        for _data in data_list:
+            _data = _postprocess_single_dataframe(_data, t0)
+        
+        data = data_list
+    else:
+        t0 = data['t'][0]
+        data = _postprocess_single_dataframe(data, t0)
+
+    return data
+
 def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, plot_item, plot_color, speed, displacement, direction, stop_flag, stop_button, initial_absolute_position, reference_absolute_position, test_parameters):
-    data_obj = None
+    data = None
 
     if stop_flag is False:
-        t0 = None
-        data = None
-
         initial_gauge_length = test_parameters['initial_gauge_length']['value']
         loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
 
@@ -604,20 +641,17 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
 
         stop_button.when_released = None
 
-        data_obj = {
-            't0': t0,
-            'data': data
-        }
+        # DERIVED DATA COMPUTATION
+        t0 = data['t'][0]
+        data['displacement'] = (data['t'] - t0) * speed + (reference_absolute_position - initial_absolute_position)
+        data['strain'] = (data['displacement'] / test_parameters['initial_gauge_length']['value']) * 100
 
-    return data_obj, stop_flag
+    return data, stop_flag
 
 def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, plot_item, plot_color, delay, stop_flag, stop_button, initial_absolute_position, test_parameters):
-    data_obj = None
+    data = None
 
     if stop_flag is False and delay != 0:
-        t0 = None
-        data = None
-
         initial_gauge_length = test_parameters['initial_gauge_length']['value']
         loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
 
@@ -676,12 +710,11 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
 
         stop_button.when_released = None
 
-        data_obj = {
-            't0': t0,
-            'data': data
-        }
+        # DERIVED DATA COMPUTATION
+        data['displacement'] = fixed_strain * initial_gauge_length / 100
+        data['strain'] = fixed_strain
 
-    return data_obj, stop_flag
+    return data, stop_flag
 
 def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
@@ -708,7 +741,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     plot_item.setLabel('left', 'Force', 'N')
     plot_item.setTitle('Force vs. Strain')
 
-    data_obj, stop_flag = _run_go(
+    data, stop_flag = _run_go(
         my_controller,
         my_loadcell,
         plot_item=plot_item,
@@ -723,9 +756,6 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         test_parameters=test_parameters
     )
 
-    t0 = data_obj['t0']
-    data = data_obj['data']
-
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
@@ -733,16 +763,6 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
     pg.exec()
     utility.delete_last_lines(n_lines=1)
     console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')   
-
-    data['t'] = data['t'] - t0
-    data['displacement'] = data['t'] * linear_speed
-    data['F_raw'] = data['F']
-    data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
-    data['stress_raw'] = data['F_raw'] / cross_section
-    data['stress_med20'] = data['F_med20'] / cross_section
-    data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
-    data.loc[data.index[0], 'cross_section'] = cross_section
-    data.loc[data.index[0], 'initial_gauge_length'] = initial_gauge_length
 
     return data
 
@@ -797,7 +817,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     if is_pretensioning_set:
         # PRETENSIONING PHASE - GO
         reference_absolute_position = initial_absolute_position
-        data_obj, stop_flag = _run_go(
+        data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
@@ -811,10 +831,10 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data_obj)
+        data_list.append(data)
 
         # PRETENSIONING PHASE - RETURN DELAY
-        data_obj, stop_flag = _run_delay(
+        data, stop_flag = _run_delay(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
@@ -825,11 +845,11 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             initial_absolute_position=initial_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data_obj)
+        data_list.append(data)
 
         # PRETENSIONING PHASE - RETURN
         reference_absolute_position = my_controller.get_absolute_position()
-        data_obj, stop_flag = _run_go(
+        data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
@@ -843,10 +863,10 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data_obj)
+        data_list.append(data)
 
         # PRETENSIONING PHASE - AFTER DELAY
-        data_obj, stop_flag = _run_delay(
+        data, stop_flag = _run_delay(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
@@ -857,13 +877,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             initial_absolute_position=initial_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data_obj)
+        data_list.append(data)
 
     # CYCLIC PHASE
     for cycle_idx in range(int(cycles_number)):
         # CYCLIC PHASE - GO
         reference_absolute_position = my_controller.get_absolute_position()
-        data_obj, stop_flag = _run_go(
+        data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
@@ -877,10 +897,10 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data_obj)
+        data_list.append(data)
     
         # CYCLIC PHASE - RETURN DELAY
-        data_obj, stop_flag = _run_delay(
+        data, stop_flag = _run_delay(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
@@ -891,11 +911,11 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             initial_absolute_position=initial_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data_obj)
+        data_list.append(data)
 
         # CYCLIC PHASE - RETURN
         reference_absolute_position = my_controller.get_absolute_position()
-        data_obj, stop_flag = _run_go(
+        data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
@@ -909,11 +929,11 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data_obj)
+        data_list.append(data)
         
         # CYCLIC PHASE - DELAY
         if cycle_idx < (int(cycles_number) - 1):
-            data_obj, stop_flag = _run_delay(
+            data, stop_flag = _run_delay(
                 my_controller,
                 my_loadcell,
                 plot_item=plot_item,
@@ -924,22 +944,17 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                 initial_absolute_position=initial_absolute_position,
                 test_parameters=test_parameters
             )
-            data_list.append(data_obj)
+            data_list.append(data)
 
-    
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...')       
     pg.exec()
     utility.delete_last_lines(n_lines=1)
-    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]')
+    console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]') 
 
-    data_list = list(filter(None.__ne__, data_list))
-    for data_obj in data_list:
-        data_obj['data']['t'] = data_obj['data']['t'] - data_list[0]['t0']
-    
-    return
+    return data_list
 
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
@@ -1053,9 +1068,19 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
             stop_button_pin=stop_button_pin
         )
 
+    with console.status('Postprocessing test data...'):
+        if data is not None:
+            data = _postprocess_data(data, test_parameters)
+    
+    console.print('[#e5c07b]>[/#e5c07b]', 'Postprocessing test data...', '[green]:heavy_check_mark:[/green]')
+
     with console.status('Saving test data...'):
         filename = test_parameters['test_id'] + '.csv'
         if data is not None:
+            if isinstance(data, list):
+                data = pd.concat(data, ignore_index=True)
+
+            console.print(data)
             data.to_csv(output_dir + r'/' + filename, index=False)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...', '[green]:heavy_check_mark:[/green]')
