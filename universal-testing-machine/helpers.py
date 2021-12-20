@@ -813,6 +813,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_item.setTitle('Force vs. Strain')
 
     data_list = []
+    data_labels_list = []
     
     if is_pretensioning_set:
         # PRETENSIONING PHASE - GO
@@ -833,6 +834,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         )
         if data is not None:
             data_list.append(data)
+            data_labels_list.append('pretensioning_go')
 
         # PRETENSIONING PHASE - RETURN DELAY
         data, stop_flag = _run_delay(
@@ -848,6 +850,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         )
         if data is not None:
             data_list.append(data)
+            data_labels_list.append('pretensioning_return_delay')
 
         # PRETENSIONING PHASE - RETURN
         reference_absolute_position = my_controller.get_absolute_position()
@@ -867,6 +870,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         )
         if data is not None:
             data_list.append(data)
+            data_labels_list.append('pretensioning_return')
 
         # PRETENSIONING PHASE - AFTER DELAY
         data, stop_flag = _run_delay(
@@ -882,6 +886,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         )
         if data is not None:
             data_list.append(data)
+            data_labels_list.append('pretensioning_after_delay')
 
     # CYCLIC PHASE
     for cycle_idx in range(int(cycles_number)):
@@ -903,6 +908,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         )
         if data is not None:
             data_list.append(data)
+            data_labels_list.append('cycle_' + str(cycle_idx) + '_go')
     
         # CYCLIC PHASE - RETURN DELAY
         data, stop_flag = _run_delay(
@@ -918,6 +924,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         )
         if data is not None:
             data_list.append(data)
+            data_labels_list.append('cycle_' + str(cycle_idx) + '_return_delay')
 
         # CYCLIC PHASE - RETURN
         reference_absolute_position = my_controller.get_absolute_position()
@@ -937,6 +944,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
         )
         if data is not None:
             data_list.append(data)
+            data_labels_list.append('cycle_' + str(cycle_idx) + '_return')
         
         # CYCLIC PHASE - DELAY
         if cycle_idx < (int(cycles_number) - 1):
@@ -953,6 +961,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             )
             if data is not None:
                 data_list.append(data)
+                data_labels_list.append('cycle_' + str(cycle_idx) + '_delay')
 
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
@@ -962,7 +971,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     utility.delete_last_lines(n_lines=1)
     console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for the plot figure to be closed...', '[green]:heavy_check_mark:[/green]') 
 
-    return data_list
+    return data_list, data_labels_list
 
 def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
@@ -1054,6 +1063,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
 
 def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
     data = None
+    data_labels = None
 
     if test_parameters['test_type'] == 'monotonic':
         data = _start_monotonic_test(
@@ -1063,7 +1073,7 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
             stop_button_pin=stop_button_pin
         )
     elif test_parameters['test_type'] == 'cyclic':
-        data = _start_cyclic_test(
+        data, data_labels = _start_cyclic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
