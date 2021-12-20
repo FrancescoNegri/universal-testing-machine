@@ -552,7 +552,7 @@ def _postprocess_data(data, test_parameters:dict, filter_kernel_size:int = 21):
         df['stress_raw'] = df['F_raw'] / cross_section
 
         # Drop replaced columns
-        df.drop(columns='F')
+        df.drop(columns='F', inplace=True)
 
         # Add filtered columns
         df['F_med' + str(filter_kernel_size)] = scipy.signal.medfilt(df['F_raw'], filter_kernel_size)
