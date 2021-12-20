@@ -565,7 +565,7 @@ def _postprocess_data(data, test_parameters:dict, filter_kernel_size:int = 21):
         return df
 
     if isinstance(data, list):
-        data_list = list(filter(None.__ne__, data))
+        data_list = data
         t0 = data_list[0]['t'][0]
 
         for _data in data_list:
@@ -831,7 +831,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data)
+        if data is not None:
+            data_list.append(data)
 
         # PRETENSIONING PHASE - RETURN DELAY
         data, stop_flag = _run_delay(
@@ -845,7 +846,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             initial_absolute_position=initial_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data)
+        if data is not None:
+            data_list.append(data)
 
         # PRETENSIONING PHASE - RETURN
         reference_absolute_position = my_controller.get_absolute_position()
@@ -863,7 +865,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data)
+        if data is not None:
+            data_list.append(data)
 
         # PRETENSIONING PHASE - AFTER DELAY
         data, stop_flag = _run_delay(
@@ -877,7 +880,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             initial_absolute_position=initial_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data)
+        if data is not None:
+            data_list.append(data)
 
     # CYCLIC PHASE
     for cycle_idx in range(int(cycles_number)):
@@ -897,7 +901,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data)
+        if data is not None:
+            data_list.append(data)
     
         # CYCLIC PHASE - RETURN DELAY
         data, stop_flag = _run_delay(
@@ -911,7 +916,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             initial_absolute_position=initial_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data)
+        if data is not None:
+            data_list.append(data)
 
         # CYCLIC PHASE - RETURN
         reference_absolute_position = my_controller.get_absolute_position()
@@ -929,7 +935,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             reference_absolute_position=reference_absolute_position,
             test_parameters=test_parameters
         )
-        data_list.append(data)
+        if data is not None:
+            data_list.append(data)
         
         # CYCLIC PHASE - DELAY
         if cycle_idx < (int(cycles_number) - 1):
@@ -944,7 +951,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                 initial_absolute_position=initial_absolute_position,
                 test_parameters=test_parameters
             )
-            data_list.append(data)
+            if data is not None:
+                data_list.append(data)
 
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
