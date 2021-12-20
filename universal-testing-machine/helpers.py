@@ -1093,6 +1093,20 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
     console.print('[#e5c07b]>[/#e5c07b]', 'Postprocessing test data...', '[green]:heavy_check_mark:[/green]')
 
     with console.status('Saving test data...'):
+        # Save .xlsx file
+        filename = test_parameters['test_id'] + '.xlsx'
+        if data is not None:
+            writer = pd.ExcelWriter(output_dir + r'/' + filename)
+            
+            if isinstance(data, list):
+                data_list = data
+                for idx, _ in enumerate(data_list):
+                    data_list[idx].to_excel(writer, sheet_name=data_labels[idx], index=False)
+            else:
+                data.to_excel(writer, sheet_name=test_parameters['test_id'], index=False)
+            
+            writer.save()
+        
         # Save complete .csv file
         filename = test_parameters['test_id'] + '.csv'
         if data is not None:
