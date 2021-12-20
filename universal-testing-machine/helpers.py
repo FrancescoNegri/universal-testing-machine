@@ -1075,12 +1075,12 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
     console.print('[#e5c07b]>[/#e5c07b]', 'Postprocessing test data...', '[green]:heavy_check_mark:[/green]')
 
     with console.status('Saving test data...'):
+        # Save complete .csv file
         filename = test_parameters['test_id'] + '.csv'
         if data is not None:
             if isinstance(data, list):
                 data = pd.concat(data, ignore_index=True)
 
-            console.print(data)
             data.to_csv(output_dir + r'/' + filename, index=False)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...', '[green]:heavy_check_mark:[/green]')
