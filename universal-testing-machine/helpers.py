@@ -796,7 +796,8 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     # FAILURE PHASE PARAMETERS
     is_failure_set = test_parameters['is_failure_set']
     if is_failure_set:
-        pass
+        failure_speed = test_parameters['failure_speed']['value']
+        failure_before_delay = test_parameters['failure_before_delay']['value']
 
     stop_flag = False
     stop_button = Button(pin=stop_button_pin)
@@ -963,6 +964,46 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
                 data_list.append(data)
                 data_labels_list.append('cycle_' + str(cycle_idx) + '_delay')
 
+    # FAILURE PHASE
+    if is_failure_set:
+        plot_item.getViewBox().enableAutoRange(axis='x')
+
+        # FAILURE PHASE - BEFORE DELAY
+        data, stop_flag = _run_delay(
+            my_controller,
+            my_loadcell,
+            plot_item=plot_item,
+            plot_color='#F0F0F0',
+            delay=failure_before_delay,
+            stop_flag=stop_flag,
+            stop_button=stop_button,
+            initial_absolute_position=initial_absolute_position,
+            test_parameters=test_parameters
+        )
+        if data is not None:
+            data_list.append(data)
+            data_labels_list.append('failure_before_delay')
+
+        # FAILURE PHASE - GO
+        reference_absolute_position = my_controller.get_absolute_position()
+        data, stop_flag = _run_go(
+            my_controller,
+            my_loadcell,
+            plot_item=plot_item,
+            plot_color='#0F0F0F',
+            speed=failure_speed,
+            displacement=150,
+            direction=controller.UP,
+            stop_flag=stop_flag,
+            stop_button=stop_button,
+            initial_absolute_position=initial_absolute_position,
+            reference_absolute_position=reference_absolute_position,
+            test_parameters=test_parameters
+        )
+        if data is not None:
+            data_list.append(data)
+            data_labels_list.append('failure_go')
+    
     utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
