@@ -816,6 +816,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     data_list = []
     data_labels_list = []
     
+    # PRETENSIONING PHASE
     if is_pretensioning_set:
         # PRETENSIONING PHASE - GO
         reference_absolute_position = initial_absolute_position
