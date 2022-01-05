@@ -745,7 +745,7 @@ def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell
         my_controller,
         my_loadcell,
         plot_item=plot_item,
-        plot_color='#FFFFFF',
+        plot_color=constants.PLOT_COLORS_LIST[0],
         speed=linear_speed,
         displacement=displacement,
         direction=controller.UP,
@@ -805,6 +805,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_widget = pg.plot(title='Cyclic Test Plot')
     plot_widget.setMouseEnabled(x=False, y=False)
     plot_item = plot_widget.getPlotItem()
+    plot_color_idx = 0
 
     xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100) # 10% margin
     ylim = loadcell_limit
@@ -819,12 +820,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     # PRETENSIONING PHASE
     if is_pretensioning_set:
         # PRETENSIONING PHASE - GO
+        plot_color_idx += 1
         reference_absolute_position = initial_absolute_position
         data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#FF0000',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             speed=pretensioning_speed,
             displacement=(cyclic_upper_limit + initial_absolute_position) - reference_absolute_position,
             direction=controller.UP,
@@ -839,11 +841,12 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_labels_list.append('pretensioning_go')
 
         # PRETENSIONING PHASE - RETURN DELAY
+        plot_color_idx += 1
         data, stop_flag = _run_delay(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#00FF00',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             delay=pretensioning_return_delay,
             stop_flag=stop_flag,
             stop_button=stop_button,
@@ -855,12 +858,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_labels_list.append('pretensioning_return_delay')
 
         # PRETENSIONING PHASE - RETURN
+        plot_color_idx += 1
         reference_absolute_position = my_controller.get_absolute_position()
         data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#0000FF',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             speed=pretensioning_return_speed,
             displacement=reference_absolute_position - (initial_absolute_position + cyclic_lower_limit),
             direction=controller.DOWN,
@@ -875,11 +879,12 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_labels_list.append('pretensioning_return')
 
         # PRETENSIONING PHASE - AFTER DELAY
+        plot_color_idx += 1
         data, stop_flag = _run_delay(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#FFFF00',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             delay=pretensioning_after_delay,
             stop_flag=stop_flag,
             stop_button=stop_button,
@@ -893,12 +898,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     # CYCLIC PHASE
     for cycle_idx in range(int(cycles_number)):
         # CYCLIC PHASE - GO
+        plot_color_idx += 1
         reference_absolute_position = my_controller.get_absolute_position()
         data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#FF00FF',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             speed=cyclic_speed,
             displacement=(cyclic_upper_limit + initial_absolute_position) - reference_absolute_position,
             direction=controller.UP,
@@ -913,11 +919,12 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_labels_list.append('cycle_' + str(cycle_idx) + '_go')
     
         # CYCLIC PHASE - RETURN DELAY
+        plot_color_idx += 1
         data, stop_flag = _run_delay(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#00FF00',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             delay=cyclic_return_delay,
             stop_flag=stop_flag,
             stop_button=stop_button,
@@ -929,12 +936,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_labels_list.append('cycle_' + str(cycle_idx) + '_return_delay')
 
         # CYCLIC PHASE - RETURN
+        plot_color_idx += 1
         reference_absolute_position = my_controller.get_absolute_position()
         data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#00FFFF',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             speed=cyclic_return_speed,
             displacement=reference_absolute_position - (initial_absolute_position + cyclic_lower_limit),
             direction=controller.DOWN,
@@ -949,12 +957,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_labels_list.append('cycle_' + str(cycle_idx) + '_return')
         
         # CYCLIC PHASE - DELAY
+        plot_color_idx += 1
         if cycle_idx < (int(cycles_number) - 1):
             data, stop_flag = _run_delay(
                 my_controller,
                 my_loadcell,
                 plot_item=plot_item,
-                plot_color='#00FF00',
+                plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
                 delay=cyclic_delay,
                 stop_flag=stop_flag,
                 stop_button=stop_button,
@@ -964,17 +973,19 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             if data is not None:
                 data_list.append(data)
                 data_labels_list.append('cycle_' + str(cycle_idx) + '_delay')
+            plot_color_idx -= 4
 
     # FAILURE PHASE
     if is_failure_set:
         plot_item.getViewBox().enableAutoRange(axis='x')
 
         # FAILURE PHASE - BEFORE DELAY
+        plot_color_idx += 1
         data, stop_flag = _run_delay(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#F0F0F0',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             delay=failure_before_delay,
             stop_flag=stop_flag,
             stop_button=stop_button,
@@ -986,12 +997,13 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
             data_labels_list.append('failure_before_delay')
 
         # FAILURE PHASE - GO
+        plot_color_idx += 1
         reference_absolute_position = my_controller.get_absolute_position()
         data, stop_flag = _run_go(
             my_controller,
             my_loadcell,
             plot_item=plot_item,
-            plot_color='#0F0F0F',
+            plot_color=constants.PLOT_COLORS_LIST[plot_color_idx],
             speed=failure_speed,
             displacement=150,
             direction=controller.UP,
@@ -1043,7 +1055,7 @@ def _start_static_test(my_controller:controller.LinearController, my_loadcell:lo
 
     plot_data = plot_item.plot(pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
     plot_data.opts['useCache'] = True
-    plot_data.setSymbolPen(mkPen('#FFFFFF'))
+    plot_data.setSymbolPen(mkPen(constants.PLOT_COLORS_LIST[0]))
 
     timings = []
     forces = []
