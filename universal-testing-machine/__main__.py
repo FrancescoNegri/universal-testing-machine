@@ -81,7 +81,7 @@ while result is not None:
                 down_button_pin=27
             )
 
-            test_parameters = helpers.read_test_parameters(test_type=result)
+            test_parameters = helpers.set_test_parameters(test_type=result)
             output_dir = helpers.create_output_dir(test_parameters)
             helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
 

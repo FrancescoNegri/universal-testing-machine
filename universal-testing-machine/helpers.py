@@ -45,8 +45,18 @@ def create_output_dir(test_parameters:dict):
 
     return output_dir
 
+def create_configurations_dir():
+    dir = os.path.dirname(__file__)
+    path = './.configurations'
+    configurations_dir = os.path.join(dir, path)
+    os.makedirs(configurations_dir, exist_ok=True)
+
+    return configurations_dir
+
+# TODO: refactor calibration as test_parameters
 def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCell):
     try:
+        # FIXME: fix path with os.path.join
         with open(calibration_dir + r'/' + my_loadcell._calibration_filename) as f:
             calibration = json.load(f)
             use_existing_calibration = inquirer.confirm(
@@ -486,8 +496,88 @@ def _read_cyclic_test_parameters():
 
     return test_parameters
 
-def read_test_parameters(test_type:bool):
+def list_configurations(configurations_dir:str):
+    configurations = []
+    for f in os.listdir(configurations_dir):
+        if os.path.isfile(os.path.join(configurations_dir, f)):
+            configurations.append(f)
+
+    return configurations
+
+def load_configuration(configurations_dir:str, configuration_name:str, test_type:str):
+    try:
+        with open(os.path.join(configurations_dir, configuration_name)) as f:
+            test_parameters = json.load(f)
+            if test_parameters['test_type'] == test_type:
+                # TODO: check all parameters are ok
+                # TODO: show loaded test parameters
+                print('Parameters are ok.')
+            else:
+                # TODO: show a proper message informing that the loaded configuration is for another test type
+                print('Wrong test type')
+                test_parameters = None
+    except:
+        # TODO: send a warning message that the set of parameters couldn't be loaded
+        print('Selected set of test parameters not found.')
+        test_parameters = None
+    finally:
+        return test_parameters
+
+def save_configuration(configurations_dir:str, test_parameters:dict):
+    filename = inquirer.text(
+        message='Insert a name for this configuration:'
+    ).execute()
+
+    extension = '.json'
+
+    with open(os.path.join(configurations_dir, filename + extension), 'w') as f:
+        json.dump(test_parameters, f)
+
+    return
+
+def set_test_parameters(test_type:bool):
     is_confirmed = False
+
+    while is_confirmed is False:
+        test_parameters = None
+        while test_parameters is None:
+            configurations_dir = create_configurations_dir()
+            configurations = list_configurations(configurations_dir)
+            choices = ['Insert test parameters']
+            choices.extend(configurations)
+            result = inquirer.fuzzy(
+                message="Select an existing set of test parameters or insert new ones:",
+                choices=choices
+            ).execute()
+
+            # Insert new test parameters
+            if result == choices[0]:
+                test_parameters = read_test_parameters(test_type)
+
+                result = inquirer.confirm(
+                    message='Would you like to save this set of parameters as a new configuration?',
+                    default=True
+                ).execute()
+                if result is True:
+                    save_configuration(configurations_dir)
+            # Using an existing set of test parameters
+            else:
+                test_parameters = load_configuration(configurations_dir, configuration_name=result, test_type=test_type)
+
+        test_parameters['test_id'] = inquirer.text(
+            message='Insert the ID for this session:',
+            validate=validator.EmptyInputValidator(),
+            transformer=lambda result: ' '.join(result.split()).replace(' ', '_'),
+            filter=lambda result: ' '.join(result.split()).replace(' ', '_'),
+            default=test_parameters['date']
+        ).execute()
+
+        is_confirmed = inquirer.confirm(
+            message='Confirm?'
+        ).execute()
+    return test_parameters
+
+def read_test_parameters(test_type:bool):
 
     timestamp = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
     test_parameters = {
@@ -496,27 +586,14 @@ def read_test_parameters(test_type:bool):
         'date': timestamp
     }
 
-    while not is_confirmed:
-        if test_type == 'monotonic':
-            monotonic_test_parameters = _read_monotonic_test_parameters()
-            test_parameters = {**test_parameters, **monotonic_test_parameters}
-        elif test_type == 'cyclic':
-            cyclic_test_parameters = _read_cyclic_test_parameters()
-            test_parameters = {**test_parameters, **cyclic_test_parameters}
-        elif test_type == 'static':
-            pass
-
-        test_parameters['test_id'] = inquirer.text(
-            message='Insert the ID for this session:',
-            validate=validator.EmptyInputValidator(),
-            transformer=lambda result: ' '.join(result.split()).replace(' ', '_'),
-            filter=lambda result: ' '.join(result.split()).replace(' ', '_'),
-            default=timestamp
-        ).execute()
-
-        is_confirmed = inquirer.confirm(
-            message='Confirm?'
-        ).execute()
+    if test_type == 'monotonic':
+        monotonic_test_parameters = _read_monotonic_test_parameters()
+        test_parameters = {**test_parameters, **monotonic_test_parameters}
+    elif test_type == 'cyclic':
+        cyclic_test_parameters = _read_cyclic_test_parameters()
+        test_parameters = {**test_parameters, **cyclic_test_parameters}
+    elif test_type == 'static':
+        pass
 
     return test_parameters
 
@@ -534,6 +611,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
             }
 
     filename = 'test_parameters.json'
+    # FIXME: fix path with os.path.join 
     with open(output_dir + r'/' + filename, 'w') as f:
         json.dump(test_parameters, f)
 
@@ -1150,6 +1228,7 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
         # Save .xlsx file
         filename = test_parameters['test_id'] + '.xlsx'
         if data is not None:
+            # FIXME: fix path with os.path.join
             writer = pd.ExcelWriter(output_dir + r'/' + filename)
             
             if isinstance(data, list):
@@ -1167,6 +1246,7 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
             if isinstance(data, list):
                 data = pd.concat(data, ignore_index=True)
 
+            # FIXME: fix path with os.path.join
             data.to_csv(output_dir + r'/' + filename, index=False)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...', '[green]:heavy_check_mark:[/green]')
