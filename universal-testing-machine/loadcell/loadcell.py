@@ -3,7 +3,6 @@ from statistics import mean, median
 import time
 import RPi.GPIO as GPIO
 from loadcell.hx711 import HX711
-import constants
 import scipy
 import scipy.signal
 from scipy import constants as scipy_constants
@@ -19,7 +18,7 @@ def read_placeholder():
     return random.randint(100000, 111111)
 
 class LoadCell():
-    def __init__(self, dat_pin:int, clk_pin:int):
+    def __init__(self, dat_pin:int, clk_pin:int, clamp_grams:int):
 
         GPIO.setmode(GPIO.BCM)
         self._hx711 = HX711(dout_pin=dat_pin, pd_sck_pin=clk_pin)
@@ -30,7 +29,7 @@ class LoadCell():
         self._slope = None
         self._y_intercept = None
         self._calibrating_mass = None
-        self._offset = constants.CLAMP_GRAMS
+        self._offset = clamp_grams
         self._calibration_filename = 'load_cell_calibration.json'
 
         # Reading attributes

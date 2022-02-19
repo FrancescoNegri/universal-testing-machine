@@ -4,6 +4,7 @@ console = Console()
 from controller import controller
 from loadcell import loadcell
 import helpers
+from src import configuration, constants, test
 
 my_controller = controller.LinearController(
     motor=controller.stepper.StepperMotor(
@@ -21,7 +22,8 @@ my_controller = controller.LinearController(
 
 my_loadcell = loadcell.LoadCell(
     dat_pin=5,
-    clk_pin=6
+    clk_pin=6,
+    clamp_grams=constants.CLAMP_GRAMS
 )
 
 console.rule('[bold red]UNIVERSAL TESTING MACHINE')
@@ -81,11 +83,11 @@ while result is not None:
                 down_button_pin=27
             )
 
-            test_parameters = helpers.set_test_parameters(test_type=result)
+            test_parameters = configuration.set_test_parameters(test_type=result)
             output_dir = helpers.create_output_dir(test_parameters)
             helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
 
-            helpers.start_test(
+            test.start_test(
                 my_controller,
                 my_loadcell,
                 test_parameters,
@@ -111,7 +113,7 @@ while result is not None:
         output_dir = helpers.create_output_dir(test_parameters)
         helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
 
-        helpers.start_test(
+        test.start_test(
                 my_controller,
                 my_loadcell,
                 test_parameters,
