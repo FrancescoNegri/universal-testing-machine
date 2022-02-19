@@ -351,8 +351,8 @@ def set_test_parameters(test_type: bool):
                     _save_configuration(configurations_dir, test_parameters)
             # Using an existing set of test parameters
             else:
-                test_parameters = _load_configuration(
-                    configurations_dir, configuration_name=result, test_type=test_type)
+                test_parameters = _load_configuration(configurations_dir, configuration_name=result, test_type=test_type)
+                test_parameters['date'] = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
 
         test_parameters['test_id'] = inquirer.text(
             message='Insert the ID for this session:',
