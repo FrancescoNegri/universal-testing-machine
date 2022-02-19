@@ -1,3 +1,4 @@
+import os
 import time
 import pyqtgraph as pg
 from pyqtgraph.functions import mkPen
@@ -625,8 +626,7 @@ def start_test(my_controller: controller.LinearController, my_loadcell: loadcell
         # Save .xlsx file
         filename = test_parameters['test_id'] + '.xlsx'
         if data is not None:
-            # FIXME: fix path with os.path.join
-            writer = pd.ExcelWriter(output_dir + r'/' + filename)
+            writer = pd.ExcelWriter(os.path.join(output_dir, filename))
 
             if isinstance(data, list):
                 data_list = data
@@ -645,8 +645,7 @@ def start_test(my_controller: controller.LinearController, my_loadcell: loadcell
             if isinstance(data, list):
                 data = pd.concat(data, ignore_index=True)
 
-            # FIXME: fix path with os.path.join
-            data.to_csv(output_dir + r'/' + filename, index=False)
+            data.to_csv(os.path.join(output_dir, filename), index=False)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...',
                   '[green]:heavy_check_mark:[/green]')

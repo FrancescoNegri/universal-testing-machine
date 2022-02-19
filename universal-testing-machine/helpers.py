@@ -43,8 +43,7 @@ def create_output_dir(test_parameters:dict):
 # TODO: refactor calibration as test_parameters
 def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCell):
     try:
-        # FIXME: fix path with os.path.join
-        with open(calibration_dir + r'/' + my_loadcell._calibration_filename) as f:
+        with open(os.path.join(calibration_dir, my_loadcell._calibration_filename)) as f:
             calibration = json.load(f)
             use_existing_calibration = inquirer.confirm(
                 message='An existing calibration for the {} {} load cell has been found. Do you want to use it?'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit']),
@@ -263,8 +262,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
             }
 
     filename = 'test_parameters.json'
-    # FIXME: fix path with os.path.join 
-    with open(output_dir + r'/' + filename, 'w') as f:
+    with open(os.path.join(output_dir, filename), 'w') as f:
         json.dump(test_parameters, f)
 
     return
