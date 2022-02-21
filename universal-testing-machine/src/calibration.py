@@ -137,9 +137,23 @@ def _save_calibration(calibration_dir:str, calibration:dict):
     ).execute()
 
     extension = '.json'
-    filename = filename + extension
 
-    # TODO: check if file already exists
+    if os.path.isfile(os.path.join(calibration_dir, filename + extension)):
+        is_confirmed = inquirer.confirm(
+            message='A calibration with the same name already exists. Overwrite it?'
+        ).execute()
+
+        if is_confirmed is False:
+            copy_idx = ''
+            idx = 0
+            while os.path.isfile(os.path.join(calibration_dir, filename + copy_idx + extension)):
+                idx = idx + 1
+                copy_idx = '(' + str(idx) + ')'
+            
+            filename = filename + copy_idx
+            console.print('[#e5c07b]>[/#e5c07b]', 'Calibration saved as: {}'.format(filename + extension))
+
+    filename = filename + extension
 
     with open(os.path.join(calibration_dir, filename), 'w') as f:
         json.dump(calibration, f)
