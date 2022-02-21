@@ -311,9 +311,24 @@ def _save_configuration(configurations_dir: str, test_parameters: dict):
     test_parameters.pop('test_id', None)
 
     extension = '.json'
-    filename = filename + extension
 
-    # TODO: check if file already exists
+    if os.path.isfile(os.path.join(configurations_dir, filename + extension)):
+        is_confirmed = inquirer.confirm(
+            message='A set of test parameters with the same name already exists. Overwrite it?'
+        ).execute()
+
+        if is_confirmed is False:
+            copy_idx = ''
+            idx = 0
+            while os.path.isfile(os.path.join(configurations_dir, filename + copy_idx + extension)):
+                idx = idx + 1
+                copy_idx = '(' + str(idx) + ')'
+            
+            filename = filename + copy_idx
+            console.print('[#e5c07b]>[/#e5c07b]', 'Set of test parameters saved as: {}'.format(filename + extension))
+
+
+    filename = filename + extension
 
     with open(os.path.join(configurations_dir, filename), 'w') as f:
         json.dump(test_parameters, f)
