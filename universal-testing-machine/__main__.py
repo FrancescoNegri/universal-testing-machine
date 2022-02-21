@@ -4,7 +4,8 @@ console = Console()
 from controller import controller
 from loadcell import loadcell
 import helpers
-from src import configuration, constants, test
+from src import calibration, configuration, test
+from src import constants
 
 my_controller = controller.LinearController(
     motor=controller.stepper.StepperMotor(
@@ -45,10 +46,7 @@ while result is not None:
     ).execute()
 
     if result == 'loadcell_calibration':
-        calibration_dir = helpers.create_calibration_dir()
-        helpers.check_existing_calibration(calibration_dir, my_loadcell)
-        if my_loadcell.is_calibrated is not True:
-            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+        calibration.calibrate_loadcell(my_loadcell)
     elif result == 'manual':
         helpers.start_manual_mode(
             my_controller,
@@ -64,15 +62,12 @@ while result is not None:
             default='50',
             validate=validator.NumberValidator(float_allowed=True)
         ).execute())
-        helpers.calibrate_controller(my_controller=my_controller)
+        calibration.calibrate_controller(my_controller=my_controller)
         
         if my_controller.is_calibrated:
             helpers.adjust_crossbar_position(my_controller=my_controller, adjustment_position=adjustment_position)
 
-            calibration_dir = helpers.create_calibration_dir()
-            helpers.check_existing_calibration(calibration_dir, my_loadcell)
-            if my_loadcell.is_calibrated is not True:
-                helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+            calibration.calibrate_loadcell(my_loadcell)
 
             helpers.start_manual_mode(
                 my_controller,
@@ -95,10 +90,7 @@ while result is not None:
                 stop_button_pin=22
             )
     elif result == 'static':
-        calibration_dir = helpers.create_calibration_dir()
-        helpers.check_existing_calibration(calibration_dir, my_loadcell)
-        if my_loadcell.is_calibrated is not True:
-            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+        calibration.calibrate_loadcell(my_loadcell)
         
         helpers.start_manual_mode(
                 my_controller,

@@ -1,18 +1,11 @@
 import os
 import json
 from InquirerPy import inquirer, validator
+from helpers import create_dir
 from src import constants
 from datetime import datetime
 from rich.console import Console
 console = Console()
-
-def _create_configurations_dir():
-    dir = os.path.dirname(__package__)
-    path = './.configurations'
-    configurations_dir = os.path.join(dir, path)
-    os.makedirs(configurations_dir, exist_ok=True)
-
-    return configurations_dir
 
 
 def _list_configurations(configurations_dir: str):
@@ -30,15 +23,19 @@ def _load_configuration(configurations_dir: str, configuration_name: str, test_t
             test_parameters = json.load(f)
             if test_parameters['test_type'] == test_type:
                 # TODO: check all parameters are ok
-                console.print('[#e5c07b]>[/#e5c07b]', 'Test parameters loaded correctly.')
+                console.print('[#e5c07b]>[/#e5c07b]',
+                              'Test parameters loaded correctly.')
                 console.print_json(json.dumps(test_parameters))
             else:
-                console.print('[#e5c07b]![/#e5c07b]', 'The loaded set of parameters is for another type of test.')
-                console.print('[#e5c07b]![/#e5c07b]', 'Expected: [bold]{}[/bold] | Received: [bold]{}[/bold]'.format(test_type, test_parameters['test_type']))
+                console.print(
+                    '[#e5c07b]![/#e5c07b]', 'The loaded set of parameters is for another type of test.')
+                console.print('[#e5c07b]![/#e5c07b]', 'Expected: [bold]{}[/bold] | Received: [bold]{}[/bold]'.format(
+                    test_type, test_parameters['test_type']))
                 console.print('[#e5c07b]![/#e5c07b]', 'Retry.')
                 test_parameters = None
     except:
-        console.print('[#e5c07b]![/#e5c07b]', 'The selected set of test parameters could not be loaded. Retry.')
+        console.print('[#e5c07b]![/#e5c07b]',
+                      'The selected set of test parameters could not be loaded. Retry.')
         test_parameters = None
     finally:
         return test_parameters
@@ -330,12 +327,12 @@ def set_test_parameters(test_type: bool):
     while is_confirmed is False:
         test_parameters = None
         while test_parameters is None:
-            configurations_dir = _create_configurations_dir()
+            configurations_dir = create_dir('./.configurations')
             configurations = _list_configurations(configurations_dir)
             choices = ['Insert new test parameters']
             choices.extend(configurations)
             result = inquirer.fuzzy(
-                message="Select an existing set of test parameters or insert new ones:",
+                message='Select an existing set of test parameters or insert new ones:',
                 choices=choices
             ).execute()
 
@@ -351,9 +348,11 @@ def set_test_parameters(test_type: bool):
                     _save_configuration(configurations_dir, test_parameters)
             # Using an existing set of test parameters
             else:
-                test_parameters = _load_configuration(configurations_dir, configuration_name=result, test_type=test_type)
+                test_parameters = _load_configuration(
+                    configurations_dir, configuration_name=result, test_type=test_type)
                 if test_parameters is not None:
-                    test_parameters['date'] = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
+                    test_parameters['date'] = datetime.now().strftime(
+                        '%Y_%m_%d-%H_%M_%S')
 
         test_parameters['test_id'] = inquirer.text(
             message='Insert the ID for this session:',

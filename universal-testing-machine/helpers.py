@@ -1,6 +1,5 @@
 import os
 from statistics import mean
-from InquirerPy import inquirer, validator
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -12,16 +11,15 @@ from loadcell import loadcell
 import json
 import scipy.signal
 from gpiozero import Button
-from src import constants
 
-def create_calibration_dir():
+def create_dir(relative_path):
     dir = os.path.dirname(__package__)
-    path = './.calibration'
-    calibration_dir = os.path.join(dir, path)
-    os.makedirs(calibration_dir, exist_ok=True)
+    dir = os.path.join(dir, relative_path)
+    os.makedirs(dir, exist_ok=True)
 
-    return calibration_dir
+    return dir
 
+# TODO: use generalized function create_dir (and create_test_dir)
 def create_output_dir(test_parameters:dict):
     dir = os.path.dirname(__package__)
     path = './output'
@@ -39,84 +37,6 @@ def create_output_dir(test_parameters:dict):
     os.makedirs(output_dir)
 
     return output_dir
-
-# TODO: refactor calibration as test_parameters
-def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCell):
-    try:
-        with open(os.path.join(calibration_dir, my_loadcell._calibration_filename)) as f:
-            calibration = json.load(f)
-            use_existing_calibration = inquirer.confirm(
-                message='An existing calibration for the {} {} load cell has been found. Do you want to use it?'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit']),
-                default=True
-            ).execute()
-
-            if use_existing_calibration:
-                my_loadcell.set_calibration(calibration)
-            else:
-                my_loadcell.is_calibrated = False
-    except:
-        my_loadcell.is_calibrated = False
-
-    return
-
-def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
-    loadcell_type = inquirer.select(
-        message='Selected the desired loadcell:',
-        choices=[
-            {'name': '1 N', 'value': 1},
-            {'name': '10 N', 'value': 10}
-        ],
-        default=10,
-    ).execute()
-
-    loadcell_type = int(loadcell_type)
-
-    calibrating_mass = inquirer.select(
-        message='Select the calibrating mass value [g]:',
-        choices=[
-            {'name': f'{str(constants.CALIBRATING_MASS_1_N)} g (1 N load cell)', 'value': constants.CALIBRATING_MASS_1_N},
-            {'name': f'{str(constants.CALIBRATING_MASS_10_N)} g (10 N load cell)', 'value': constants.CALIBRATING_MASS_10_N},
-            {'name': 'Custom', 'value': None}
-        ],
-        default= constants.CALIBRATING_MASS_10_N if loadcell_type == 10 else constants.CALIBRATING_MASS_1_N
-    ).execute()
-
-    if calibrating_mass is None:
-        calibrating_mass = inquirer.text(
-            message='Insert the desired calibrating mass [g]:',
-            validate=validator.NumberValidator(float_allowed=True)
-        ).execute()
-
-    calibrating_mass = float(calibrating_mass)
-
-    ready_zero = False
-    while ready_zero is False:
-        ready_zero = inquirer.confirm(
-            message='Zero-mass point calibration. Ready?'
-        ).execute()
-    zero_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=False) #HACK#
-
-    ready_mass = False
-    while ready_mass is False:
-        ready_mass = inquirer.confirm(
-            message='Known-mass point calibration. Add the known mass. Ready?'
-        ).execute()
-    mass_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=False) #HACK#
-
-    my_loadcell.calibrate(loadcell_type, zero_raw, mass_raw, calibrating_mass, calibration_dir)
-
-    return
-
-def calibrate_controller(my_controller:controller.LinearController):
-    with console.status('Calibrating the crossbar...'):
-        is_calibrated = my_controller.calibrate(speed=0.75, direction=controller.DOWN, is_linear=False)
-    
-    if is_calibrated:
-        console.print('[#e5c07b]>[/#e5c07b]', 'Calibrating the crossbar...', '[green]:heavy_check_mark:[/green]')
-    else:
-        console.print('[#e5c07b]>[/#e5c07b]', 'Calibrating the crossbar...', '[red]:cross_mark:[/red]')
-    
-    return
 
 def adjust_crossbar_position(my_controller:controller.LinearController, adjustment_position:float):
     with console.status('Adjusting crossbar position...'):
