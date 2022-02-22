@@ -1,16 +1,13 @@
-from datetime import datetime
 from statistics import mean, median
 import time
 import RPi.GPIO as GPIO
 from loadcell.hx711 import HX711
-import constants
 import scipy
 import scipy.signal
 from scipy import constants as scipy_constants
 from threading import Thread
 import numpy as np
 import pandas as pd
-import json
 
 #HACK#
 import random
@@ -19,7 +16,7 @@ def read_placeholder():
     return random.randint(100000, 111111)
 
 class LoadCell():
-    def __init__(self, dat_pin:int, clk_pin:int):
+    def __init__(self, dat_pin:int, clk_pin:int, clamp_grams:int):
 
         GPIO.setmode(GPIO.BCM)
         self._hx711 = HX711(dout_pin=dat_pin, pd_sck_pin=clk_pin)
@@ -30,7 +27,7 @@ class LoadCell():
         self._slope = None
         self._y_intercept = None
         self._calibrating_mass = None
-        self._offset = constants.CLAMP_GRAMS
+        self._offset = clamp_grams
         self._calibration_filename = 'load_cell_calibration.json'
 
         # Reading attributes
@@ -59,12 +56,6 @@ class LoadCell():
 
         return
 
-    def _save_calibration(self, calibration_dir:str):
-        with open(calibration_dir + r'/' + self._calibration_filename, 'w') as f:
-            json.dump(self.get_calibration(), f)
-        
-        return
-
     def get_calibration(self):
         if self.is_calibrated:
             calibration = {
@@ -77,15 +68,14 @@ class LoadCell():
                 'calibrating_mass': {
                     'value': self._calibrating_mass,
                     'unit': 'g'
-                },
-                'date': datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
+                }
             }
         else:
             calibration = None
         
         return calibration
 
-    def set_calibration(self, calibration:dict):
+    def _set_calibration(self, calibration:dict):
         self._limit = calibration['loadcell_limit']['value']
         self._slope = calibration['slope']
         self._y_intercept = calibration['y_intercept']
@@ -94,20 +84,24 @@ class LoadCell():
         
         return
 
-    def calibrate(self, loadcell_limit:int, zero_raw:int, mass_raw:int, calibrating_mass:float, calibration_dir:str):
-        x0 = zero_raw
-        y0 = 0
-        x1 = mass_raw
-        y1 = calibrating_mass
+    def calibrate(self, **kwargs):
+        if len(kwargs.keys()) == 1 and 'calibration' in kwargs.keys():
+            self._set_calibration(kwargs['calibration'])
+        elif set(['loadcell_limit', 'zero_raw', 'mass_raw', 'calibrating_mass']).issubset(kwargs.keys()):
+            x0 = kwargs['zero_raw']
+            y0 = 0
+            x1 = kwargs['mass_raw']
+            y1 = kwargs['calibrating_mass']
 
-        self._limit = loadcell_limit
-        self._slope = (y1 - y0) / (x1 - x0)
-        self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
-        self._calibrating_mass = calibrating_mass
-        self.is_calibrated = True
-
-        self._save_calibration(calibration_dir=calibration_dir)
-        return
+            self._limit = kwargs['loadcell_limit']
+            self._slope = (y1 - y0) / (x1 - x0)
+            self._y_intercept = (y0*x1 - y1*x0) / (x1 - x0)
+            self._calibrating_mass = kwargs['calibrating_mass']
+            self.is_calibrated = True
+        else:
+            raise 'Wrong parameters for loadcell calibration.'
+            
+        return self.get_calibration()
 
     def _get_raw_data_mean(self, n_readings:int = 1, kernel_size:int = 5, fake:bool = False):
         if n_readings == 1:
