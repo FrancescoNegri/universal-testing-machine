@@ -11,8 +11,7 @@ import scipy.signal
 from gpiozero import Button
 from controller import controller
 from loadcell import loadcell
-from src import constants
-from helpers import generate_data_table, postprocess_data
+from src import constants, helpers
 
 
 def _run_go(my_controller: controller.LinearController, my_loadcell: loadcell.LoadCell, plot_item, plot_color, speed, displacement, direction, stop_flag, stop_button, initial_absolute_position, reference_absolute_position, test_parameters):
@@ -40,7 +39,7 @@ def _run_go(my_controller: controller.LinearController, my_loadcell: loadcell.Lo
         forces = []
         batch_index = 0
 
-        live_table = Live(generate_data_table(
+        live_table = Live(helpers.generate_data_table(
             None, None, None, None), refresh_per_second=12, transient=True)
 
         my_loadcell.start_reading()
@@ -70,7 +69,7 @@ def _run_go(my_controller: controller.LinearController, my_loadcell: loadcell.Lo
                         pass
 
                     live_table.update(
-                        generate_data_table(
+                        helpers.generate_data_table(
                             force=forces[-1] if len(forces) > 0 else None,
                             absolute_position=(initial_absolute_position + (
                                 strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
@@ -122,7 +121,7 @@ def _run_delay(my_controller: controller.LinearController, my_loadcell: loadcell
         fixed_strain = ((my_controller.get_absolute_position(
         ) - initial_absolute_position) / initial_gauge_length) * 100
 
-        live_table = Live(generate_data_table(
+        live_table = Live(helpers.generate_data_table(
             None, None, None, None), refresh_per_second=12, transient=True)
 
         my_loadcell.start_reading()
@@ -148,7 +147,7 @@ def _run_delay(my_controller: controller.LinearController, my_loadcell: loadcell
                         pass
 
                     live_table.update(
-                        generate_data_table(
+                        helpers.generate_data_table(
                             force=forces[-1] if len(forces) > 0 else None,
                             absolute_position=(initial_absolute_position + (
                                 strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
@@ -531,7 +530,7 @@ def _start_static_test(my_controller: controller.LinearController, my_loadcell: 
     forces = []
     batch_index = 0
 
-    live_table = Live(generate_data_table(None, None, None,
+    live_table = Live(helpers.generate_data_table(None, None, None,
                       None), refresh_per_second=12, transient=True)
 
     t0 = my_controller.hold_torque()
@@ -561,7 +560,7 @@ def _start_static_test(my_controller: controller.LinearController, my_loadcell: 
                     pass
 
                 live_table.update(
-                    generate_data_table(
+                    helpers.generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None,
                         absolute_position=None,
                         loadcell_limit=loadcell_limit,
@@ -617,7 +616,7 @@ def start_test(my_controller: controller.LinearController, my_loadcell: loadcell
 
     with console.status('Postprocessing test data...'):
         if data is not None:
-            data = postprocess_data(data, test_parameters)
+            data = helpers.postprocess_data(data, test_parameters)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Postprocessing test data...',
                   '[green]:heavy_check_mark:[/green]')

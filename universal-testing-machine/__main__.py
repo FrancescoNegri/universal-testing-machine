@@ -3,8 +3,7 @@ from rich.console import Console
 console = Console()
 from controller import controller
 from loadcell import loadcell
-import helpers
-from src import calibration, configuration, test
+from src import calibration, configuration, test, helpers
 from src import constants
 
 my_controller = controller.LinearController(

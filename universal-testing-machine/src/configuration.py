@@ -1,8 +1,7 @@
 import os
 import json
 from InquirerPy import inquirer, validator
-from helpers import create_dir
-from src import constants
+from src import constants, helpers
 from datetime import datetime
 from rich.console import Console
 console = Console()
@@ -326,7 +325,7 @@ def set_test_parameters(test_type: bool):
     while is_confirmed is False:
         test_parameters = None
         while test_parameters is None:
-            configurations_dir = create_dir('./.configurations')
+            configurations_dir = helpers.create_dir('./.configurations')
             configurations = _list_configurations(configurations_dir)
             choices = ['Insert new test parameters']
             choices.extend(configurations)

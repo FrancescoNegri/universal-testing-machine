@@ -4,8 +4,7 @@ import numbers
 from datetime import datetime
 from loadcell import loadcell
 from controller import controller
-from helpers import create_dir
-from src import constants
+from src import constants, helpers
 from InquirerPy import inquirer, validator
 from rich.console import Console
 console = Console()
@@ -30,7 +29,7 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell):
         while is_confirmed is False:
             calibration = None
             while calibration is None:
-                calibration_dir = create_dir('./.calibration')
+                calibration_dir = helpers.create_dir('./.calibration')
                 calibrations = _list_loadcell_calibrations(calibration_dir)
                 choices = ['New calibration']
                 choices.extend(calibrations)
