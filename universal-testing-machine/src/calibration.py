@@ -1,5 +1,6 @@
 import os
 import json
+import numbers
 from datetime import datetime
 from loadcell import loadcell
 from controller import controller
@@ -51,13 +52,38 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell):
                 # Existing calibration
                 else:
                     calibration = _load_calibration(calibration_dir, calibration_name=result)
-                    calibration = my_loadcell.calibrate(calibration=calibration)
+                    if calibration is not None:
+                        calibration = my_loadcell.calibrate(calibration=calibration)
                 
             is_confirmed = inquirer.confirm(
                 message='Confirm?'
             ).execute()
 
     return
+
+def _check_calibration(calibration:dict):
+    is_ok = True
+
+    required_keys = ['loadcell_limit', 'slope', 'y_intercept', 'calibrating_mass', 'date']
+
+    if not set(required_keys).issubset(calibration.keys()):
+        console.print('[#e5c07b]![/#e5c07b]', 'Missing required keys in the calibration.')
+        is_ok = False
+        return is_ok
+    else:
+        for key, value in calibration.items():
+            if isinstance(value, dict):
+                if not isinstance(value['value'], numbers.Number):
+                    console.print('[#e5c07b]![/#e5c07b]', '[bold]{}.{}[/bold] field is not a number.'.format(key, 'value'))
+                    is_ok = False
+                    return is_ok
+            else:
+                if (not isinstance(value, numbers.Number)) and (key != 'date'):
+                    console.print('[#e5c07b]![/#e5c07b]', '[bold]{}[/bold] field is not a number.'.format(key))
+                    is_ok = False
+                    return is_ok
+
+    return is_ok
 
 def _list_loadcell_calibrations(calibration_dir:str):
     calibrations = []
@@ -71,9 +97,13 @@ def _load_calibration(calibration_dir:str, calibration_name:str):
     try:
         with open(os.path.join(calibration_dir, calibration_name)) as f:
             calibration = json.load(f)
-            # TODO: check all parameters are ok
-            console.print('[#e5c07b]>[/#e5c07b]', 'Calibration loaded correctly.')
-            console.print_json(json.dumps(calibration))
+
+            if _check_calibration(calibration) is True:
+                console.print('[#e5c07b]>[/#e5c07b]', 'Calibration loaded correctly.')
+                console.print_json(json.dumps(calibration))
+            else:
+                console.print('[#e5c07b]![/#e5c07b]', 'Calibration not loaded. Retry.')
+                calibration = None
     except:
         console.print('[#e5c07b]![/#e5c07b]', 'The selected calibration could not be loaded. Retry.')
         calibration = None
