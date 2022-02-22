@@ -7,7 +7,6 @@ from datetime import datetime
 from rich.console import Console
 console = Console()
 
-
 def _list_configurations(configurations_dir: str):
     configurations = []
     for f in os.listdir(configurations_dir):
@@ -16,30 +15,24 @@ def _list_configurations(configurations_dir: str):
 
     return configurations
 
-
 def _load_configuration(configurations_dir: str, configuration_name: str, test_type: str):
     try:
         with open(os.path.join(configurations_dir, configuration_name)) as f:
             test_parameters = json.load(f)
             if test_parameters['test_type'] == test_type:
-                # TODO: check all parameters are ok
-                console.print('[#e5c07b]>[/#e5c07b]',
-                              'Test parameters loaded correctly.')
+                
+                console.print('[#e5c07b]>[/#e5c07b]', 'Test parameters loaded correctly.')
                 console.print_json(json.dumps(test_parameters))
             else:
-                console.print(
-                    '[#e5c07b]![/#e5c07b]', 'The loaded set of parameters is for another type of test.')
-                console.print('[#e5c07b]![/#e5c07b]', 'Expected: [bold]{}[/bold] | Received: [bold]{}[/bold]'.format(
-                    test_type, test_parameters['test_type']))
+                console.print('[#e5c07b]![/#e5c07b]', 'The loaded set of parameters is for another type of test.')
+                console.print('[#e5c07b]![/#e5c07b]', 'Expected: [bold]{}[/bold] | Received: [bold]{}[/bold]'.format(test_type, test_parameters['test_type']))
                 console.print('[#e5c07b]![/#e5c07b]', 'Retry.')
                 test_parameters = None
     except:
-        console.print('[#e5c07b]![/#e5c07b]',
-                      'The selected set of test parameters could not be loaded. Retry.')
+        console.print('[#e5c07b]![/#e5c07b]', 'The selected set of test parameters could not be loaded. Retry.')
         test_parameters = None
     finally:
         return test_parameters
-
 
 def _read_cyclic_test_parameters():
     test_parameters = {}
@@ -154,8 +147,7 @@ def _read_cyclic_test_parameters():
                 inquirer.text(
                     message='Insert the speed to employ during each load cycle [mm/s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(
-                        cyclic_phase_parameters['cyclic_speed']['value'])
+                    default=str(cyclic_phase_parameters['cyclic_speed']['value'])
                 ).execute()
             ),
             'unit': 'mm/s'
@@ -166,8 +158,7 @@ def _read_cyclic_test_parameters():
                 inquirer.text(
                     message='Insert the speed to employ during each unload cycle [mm/s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(
-                        cyclic_phase_parameters['cyclic_return_speed']['value'])
+                    default=str(cyclic_phase_parameters['cyclic_return_speed']['value'])
                 ).execute()
             ),
             'unit': 'mm/s'
@@ -178,8 +169,7 @@ def _read_cyclic_test_parameters():
                 inquirer.text(
                     message='Insert the delay before unloading the specimen during the pretensioning [s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(
-                        cyclic_phase_parameters['cyclic_return_delay']['value'])
+                    default=str(cyclic_phase_parameters['cyclic_return_delay']['value'])
                 ).execute()
             ),
             'unit': 's'
@@ -211,8 +201,7 @@ def _read_cyclic_test_parameters():
                 inquirer.text(
                     message='Insert the speed to employ while reaching failure [mm/s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(
-                        cyclic_phase_parameters['cyclic_speed']['value'])
+                    default=str(cyclic_phase_parameters['cyclic_speed']['value'])
                 ).execute()
             ),
             'unit': 'mm/s'
@@ -232,7 +221,6 @@ def _read_cyclic_test_parameters():
     test_parameters = {**test_parameters, **failure_phase_parameters}
 
     return test_parameters
-
 
 def _read_monotonic_test_parameters():
     test_parameters = {}
@@ -280,9 +268,7 @@ def _read_monotonic_test_parameters():
 
     return test_parameters
 
-
 def _read_test_parameters(test_type: bool):
-
     timestamp = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
     test_parameters = {
         'test_id': timestamp,
@@ -300,7 +286,6 @@ def _read_test_parameters(test_type: bool):
         pass
 
     return test_parameters
-
 
 def _save_configuration(configurations_dir: str, test_parameters: dict):
     filename = inquirer.text(
@@ -335,7 +320,6 @@ def _save_configuration(configurations_dir: str, test_parameters: dict):
 
     return
 
-
 def set_test_parameters(test_type: bool):
     is_confirmed = False
 
@@ -363,17 +347,14 @@ def set_test_parameters(test_type: bool):
                     _save_configuration(configurations_dir, test_parameters)
             # Using an existing set of test parameters
             else:
-                test_parameters = _load_configuration(
-                    configurations_dir, configuration_name=result, test_type=test_type)
+                test_parameters = _load_configuration(configurations_dir, configuration_name=result, test_type=test_type)
                 if test_parameters is not None:
-                    test_parameters['date'] = datetime.now().strftime(
-                        '%Y_%m_%d-%H_%M_%S')
+                    test_parameters['date'] = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
 
         test_parameters['test_id'] = inquirer.text(
             message='Insert the ID for this session:',
             validate=validator.EmptyInputValidator(),
-            transformer=lambda result: ' '.join(
-                result.split()).replace(' ', '_'),
+            transformer=lambda result: ' '.join(result.split()).replace(' ', '_'),
             filter=lambda result: ' '.join(result.split()).replace(' ', '_'),
             default=test_parameters['date']
         ).execute()
