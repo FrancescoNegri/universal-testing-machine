@@ -15,7 +15,7 @@ A Raspberry Pi based Universal Testing Machine to perform a number of tasks rela
   - [Hardware List](#hardware-list)
 
 ## Requirements
-This project has been developed for `Python 3.9` on Raspberry Pi 3 and 4, running Raspberry Pi OS 11 (`Bullseye`).
+This project has been developed for `Python 3.9` on Raspberry Pi 3 and 4, running Raspberry Pi OS 11 (`Bullseye` distribution).
 
 The following packages are to be installed through Raspberry Pi `apt` package manager:
 - `SciPy 1.6.0-2 (python3-scipy)`
