@@ -590,7 +590,7 @@ def _start_static_test(my_controller: controller.LinearController, my_loadcell: 
     return data
 
 
-def start_test(my_controller: controller.LinearController, my_loadcell: loadcell.LoadCell, test_parameters: dict, output_dir: str, stop_button_pin: int):
+def start_test(my_controller: controller.LinearController, my_loadcell: loadcell.LoadCell, test_parameters: dict, test_dir: str, stop_button_pin: int):
     data = None
     data_labels = None
 
@@ -624,9 +624,10 @@ def start_test(my_controller: controller.LinearController, my_loadcell: loadcell
 
     with console.status('Saving test data...'):
         # Save .xlsx file
-        filename = test_parameters['test_id'] + '.xlsx'
+        extension = '.xlsx'
+        filename = test_parameters['test_id'] + extension
         if data is not None:
-            writer = pd.ExcelWriter(os.path.join(output_dir, filename))
+            writer = pd.ExcelWriter(os.path.join(test_dir, filename))
 
             if isinstance(data, list):
                 data_list = data
@@ -640,12 +641,13 @@ def start_test(my_controller: controller.LinearController, my_loadcell: loadcell
             writer.save()
 
         # Save complete .csv file
-        filename = test_parameters['test_id'] + '.csv'
+        extension = '.csv'
+        filename = test_parameters['test_id'] + extension
         if data is not None:
             if isinstance(data, list):
                 data = pd.concat(data, ignore_index=True)
 
-            data.to_csv(os.path.join(output_dir, filename), index=False)
+            data.to_csv(os.path.join(test_dir, filename), index=False)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...',
                   '[green]:heavy_check_mark:[/green]')

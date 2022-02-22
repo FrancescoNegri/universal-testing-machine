@@ -19,24 +19,18 @@ def create_dir(relative_path):
 
     return dir
 
-# TODO: use generalized function create_dir (and create_test_dir)
-def create_output_dir(test_parameters:dict):
-    dir = os.path.dirname(__package__)
-    path = './output'
-    output_dir = os.path.join(dir, path)
-    os.makedirs(output_dir, exist_ok=True)
-
+def create_test_dir(test_parameters:dict, output_dir:str):
     test_id = test_parameters['test_id']
-    output_dir = os.path.join(dir, path, test_id)
+    test_dir = os.path.join(output_dir, test_id)
     copy_idx = ''
     idx = 0
-    while os.path.isdir(output_dir + copy_idx):
+    while os.path.isdir(test_dir + copy_idx):
         idx = idx + 1
         copy_idx = '(' + str(idx) + ')'
-    output_dir = output_dir + copy_idx
-    os.makedirs(output_dir)
+    test_dir = test_dir + copy_idx
+    os.makedirs(test_dir)
 
-    return output_dir
+    return test_dir
 
 def adjust_crossbar_position(my_controller:controller.LinearController, adjustment_position:float):
     with console.status('Adjusting crossbar position...'):
@@ -168,7 +162,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def save_test_parameters(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str):
+def save_test_parameters(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, test_dir:str):
     if my_loadcell.is_calibrated:
         calibration = my_loadcell.get_calibration()
         test_parameters['calibration'] = calibration
@@ -182,7 +176,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
             }
 
     filename = 'test_parameters.json'
-    with open(os.path.join(output_dir, filename), 'w') as f:
+    with open(os.path.join(test_dir, filename), 'w') as f:
         json.dump(test_parameters, f)
 
     return

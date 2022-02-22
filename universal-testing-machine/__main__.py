@@ -79,14 +79,14 @@ while result is not None:
             )
 
             test_parameters = configuration.set_test_parameters(test_type=result)
-            output_dir = helpers.create_output_dir(test_parameters)
-            helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
+            test_dir = helpers.create_test_dir(test_parameters, helpers.create_dir('./output'))
+            helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, test_dir)
 
             test.start_test(
                 my_controller,
                 my_loadcell,
                 test_parameters,
-                output_dir=output_dir,
+                test_dir=test_dir,
                 stop_button_pin=22
             )
     elif result == 'static':
@@ -102,14 +102,14 @@ while result is not None:
             )
 
         test_parameters = helpers.read_test_parameters(test_type=result)
-        output_dir = helpers.create_output_dir(test_parameters)
-        helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
+        test_dir = helpers.create_test_dir(test_parameters, helpers.create_dir('./output'))
+        helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, test_dir)
 
         test.start_test(
                 my_controller,
                 my_loadcell,
                 test_parameters,
-                output_dir=output_dir,
+                test_dir=test_dir,
                 stop_button_pin=22
             )
     
