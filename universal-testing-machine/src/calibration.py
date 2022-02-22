@@ -144,14 +144,14 @@ def _read_loadcell_calibration(my_loadcell:loadcell.LoadCell):
         ready_zero = inquirer.confirm(
             message='Zero-mass point calibration. Ready?'
         ).execute()
-    zero_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=True) #HACK#
+    zero_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=False) #HACK#
 
     ready_mass = False
     while ready_mass is False:
         ready_mass = inquirer.confirm(
             message='Known-mass point calibration. Add the known mass. Ready?'
         ).execute()
-    mass_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=True) #HACK#
+    mass_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=False) #HACK#
     
     calibration = my_loadcell.calibrate(loadcell_limit=loadcell_type, zero_raw=zero_raw, mass_raw=mass_raw, calibrating_mass=calibrating_mass)
 
