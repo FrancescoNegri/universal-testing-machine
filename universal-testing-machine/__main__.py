@@ -1,8 +1,8 @@
 from InquirerPy import inquirer, validator
 from rich.console import Console
 console = Console()
-import controller
-import loadcell
+from controller import controller
+from loadcell import loadcell
 import helpers
 
 my_controller = controller.LinearController(
@@ -32,21 +32,22 @@ while result is not None:
     result = inquirer.select(
         message='Select a menu voice:',
         choices=[
-                {'name': 'Load Cell Calibration', 'value': 1},
-                {'name': 'Manual Control', 'value': 2},
-                {'name': 'Monotonic Test', 'value': 3},
-                {'name': 'Cyclic Test', 'value': 4},
+                {'name': 'Load Cell Calibration', 'value': 'loadcell_calibration'},
+                {'name': 'Manual Control', 'value': 'manual'},
+                {'name': 'Monotonic Test', 'value': 'monotonic'},
+                {'name': 'Cyclic Test', 'value': 'cyclic'},
+                {'name': 'Static Test', 'value': 'static'},
                 {'name': 'Exit', 'value': None}
         ],
-        default=3
+        default='monotonic'
     ).execute()
 
-    if result == 1:
+    if result == 'loadcell_calibration':
         calibration_dir = helpers.create_calibration_dir()
         helpers.check_existing_calibration(calibration_dir, my_loadcell)
         if my_loadcell.is_calibrated is not True:
             helpers.calibrate_loadcell(my_loadcell, calibration_dir)
-    elif result == 2:
+    elif result == 'manual':
         helpers.start_manual_mode(
             my_controller,
             my_loadcell,
@@ -55,7 +56,7 @@ while result is not None:
             up_button_pin=17,
             down_button_pin=27
         )
-    elif result == 3:
+    elif result == 'monotonic' or result == 'cyclic':
         adjustment_position = float(inquirer.text(
             message='Specify the crossbar initial position [mm]:',
             default='50',
@@ -80,7 +81,7 @@ while result is not None:
                 down_button_pin=27
             )
 
-            test_parameters = helpers.read_test_parameters(test_type='monotonic', default_clamps_distance=9.15)
+            test_parameters = helpers.read_test_parameters(test_type=result)
             output_dir = helpers.create_output_dir(test_parameters)
             helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
 
@@ -91,7 +92,31 @@ while result is not None:
                 output_dir=output_dir,
                 stop_button_pin=22
             )
-    elif result == 4:
-        print('Not implemented yet.')
+    elif result == 'static':
+        calibration_dir = helpers.create_calibration_dir()
+        helpers.check_existing_calibration(calibration_dir, my_loadcell)
+        if my_loadcell.is_calibrated is not True:
+            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+        
+        helpers.start_manual_mode(
+                my_controller,
+                my_loadcell,
+                speed=1,
+                mode_button_pin=22,
+                up_button_pin=17,
+                down_button_pin=27
+            )
+
+        test_parameters = helpers.read_test_parameters(test_type=result)
+        output_dir = helpers.create_output_dir(test_parameters)
+        helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
+
+        helpers.start_test(
+                my_controller,
+                my_loadcell,
+                test_parameters,
+                output_dir=output_dir,
+                stop_button_pin=22
+            )
     
     console.rule()

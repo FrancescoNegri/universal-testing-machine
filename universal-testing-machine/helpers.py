@@ -4,15 +4,19 @@ from InquirerPy import inquirer, validator
 from rich import box
 from rich.console import Console
 from rich.table import Table
+from rich.live import Live
 console = Console()
 from datetime import datetime
-import utility
-import controller
-import loadcell
+from utility import utility
+from controller import controller
+from loadcell import loadcell
 import json
 import scipy.signal
 from gpiozero import Button
 import matplotlib.pyplot as plt
+import constants
+import time
+import pandas as pd
 
 def create_calibration_dir():
     dir = os.path.dirname(__file__)
@@ -43,13 +47,13 @@ def create_output_dir(test_parameters:dict):
 def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCell):
     try:
         with open(calibration_dir + r'/' + my_loadcell._calibration_filename) as f:
+            calibration = json.load(f)
             use_existing_calibration = inquirer.confirm(
-                message='An existing calibration for the load cell has been found. Do you want to use it?',
+                message='An existing calibration for the {} {} load cell has been found. Do you want to use it?'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit']),
                 default=True
             ).execute()
 
             if use_existing_calibration:
-                calibration = json.load(f)
                 my_loadcell.set_calibration(calibration)
             else:
                 my_loadcell.is_calibrated = False
@@ -59,14 +63,25 @@ def check_existing_calibration(calibration_dir:str, my_loadcell:loadcell.LoadCel
     return
 
 def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
+    loadcell_type = inquirer.select(
+        message='Select the desired loadcell:',
+        choices=[
+            {'name': '1 N', 'value': 1},
+            {'name': '10 N', 'value': 10}
+        ],
+        default=10,
+    ).execute()
+
+    loadcell_type = int(loadcell_type)
+
     calibrating_mass = inquirer.select(
         message='Select the calibrating mass value [g]:',
         choices=[
-            {'name': '63.352 g (1 N load cell)', 'value': 63.352},
-            {'name': '361.606 g (10 N load cell)', 'value': 361.606},
+            {'name': f'{str(constants.CALIBRATING_MASS_1_N)} g (1 N load cell)', 'value': constants.CALIBRATING_MASS_1_N},
+            {'name': f'{str(constants.CALIBRATING_MASS_10_N)} g (10 N load cell)', 'value': constants.CALIBRATING_MASS_10_N},
             {'name': 'Custom', 'value': None}
         ],
-        default=361.606
+        default= constants.CALIBRATING_MASS_10_N if loadcell_type == 10 else constants.CALIBRATING_MASS_1_N
     ).execute()
 
     if calibrating_mass is None:
@@ -91,7 +106,7 @@ def calibrate_loadcell(my_loadcell:loadcell.LoadCell, calibration_dir:str):
         ).execute()
     mass_raw = my_loadcell._get_raw_data_mean(n_readings=100, fake=False) #HACK#
 
-    my_loadcell.calibrate(zero_raw, mass_raw, calibrating_mass, calibration_dir)
+    my_loadcell.calibrate(loadcell_type, zero_raw, mass_raw, calibrating_mass, calibration_dir)
 
     return
 
@@ -119,9 +134,55 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
+def _generate_data_table(force:float, absolute_position:float, loadcell_limit:float, force_offset:float, test_parameters:dict = None):
+    if force is None:
+        force = '-'
+        loadcell_usage = '-'
+        loadcell_usage_style = None
+    elif loadcell_limit is None:
+        force = round(force, 5)
+        loadcell_usage = '-'
+        loadcell_usage_style = None
+    else:
+        force = round(force, 5)
+        if force_offset is None:
+            force_offset = 0
+        loadcell_usage = abs(round(((force + force_offset) / loadcell_limit) * 100, 2))
+        loadcell_usage_style = 'red' if loadcell_usage > 85 else None
+
+    if absolute_position is None:
+        absolute_position = '-'
+        test_progress = '-'
+    else:
+        absolute_position = round(absolute_position, 2)
+
+        if test_parameters is None:
+            test_progress = None
+        elif test_parameters['test_type'] is 'monotonic':
+            initial_absolute_position = test_parameters['initial_gauge_length']['value'] - test_parameters['clamps_distance']['value']
+            test_progress = ((absolute_position - initial_absolute_position) / test_parameters['displacement']['value']) * 100
+            test_progress = round(test_progress, 1)
+        elif test_parameters['test_type'] is 'cyclic':
+            pass
+
+    table = Table(box=box.ROUNDED)
+    table.add_column('Force', justify='center', min_width=12)
+    table.add_column('Absolute position', justify='center', min_width=20)
+    table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
+
+    if test_parameters is None:
+        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
+    elif test_parameters['test_type'] is 'monotonic':
+        table.add_column('Test progress', justify='center', min_width=12)        
+        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
+    elif test_parameters['test_type'] is 'cyclic':
+        pass
+
+    return table
+
 def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, speed:float, mode_button_pin:int, up_button_pin:int, down_button_pin:int):
     mode = 0
-    def switch_mode():
+    def _switch_mode():
         nonlocal mode
         mode = 1
         return
@@ -130,50 +191,51 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     up_button = Button(pin=up_button_pin)
     down_button = Button(pin=down_button_pin)
     
-    mode_button.when_released = lambda: switch_mode()
+    mode_button.when_released = lambda: _switch_mode()
     up_button.when_pressed = lambda: my_controller.motor_start(speed, controller.UP)
     up_button.when_released = lambda: my_controller.motor_stop()
     down_button.when_pressed = lambda: my_controller.motor_start(speed, controller.DOWN)
     down_button.when_released = lambda: my_controller.motor_stop()
 
-    batch_index = 0
-    batch_size = 20
     if my_loadcell.is_calibrated:
         my_loadcell.start_reading()
-
-    force = '-'
-    absolute_position = '-'
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Now you are allowed to manually move the crossbar up and down.')
     console.print('[#e5c07b]>[/#e5c07b]', 'Waiting for manual mode to be stopped...')
     printed_lines = 1
-    while mode == 0:
-        if printed_lines > 1:
-            utility.delete_last_lines(printed_lines - 1)
-            printed_lines -= printed_lines - 1
-        
-        if my_loadcell.is_calibrated:
-            if my_loadcell.is_batch_ready(batch_index, batch_size):                
-                batch, batch_index = my_loadcell.get_batch(batch_index, batch_size)
-                force = round(mean(batch['F']), 5)
+    
+    force = None
+    absolute_position = None
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value'] if my_loadcell.is_calibrated else None
+    force_offset = my_loadcell.get_offset(is_force=True) if my_loadcell.is_calibrated else None
+    batch_index = 0
+    batch_size = 25
 
-        if my_controller.is_calibrated:
-            try:
-                absolute_position = round(my_controller.get_absolute_position(), 2)
-            except:
-                absolute_position = '-'
-        
-        table = Table(box=box.ROUNDED)
-        table.add_column('Force', justify='center', min_width=12)
-        table.add_column('Absolute position', justify='center', min_width=20)
-        table.add_row(f'{force} N', f'{absolute_position} mm')
-        console.print(table)
-        printed_lines += 5
+    live_table = Live(_generate_data_table(force, absolute_position, loadcell_limit, force_offset), refresh_per_second=12, transient=True)
+    
+    with live_table:
+        while mode == 0:            
+            if my_loadcell.is_calibrated:
+                while my_loadcell.is_batch_ready(batch_index, batch_size):                
+                    batch, batch_index = my_loadcell.get_batch(batch_index, batch_size)
+                    force = mean(batch['F'])
+            else:
+                force = None
 
-        if down_button.is_active and my_controller._down_endstop.is_active:
-            my_controller.motor_stop()
-        if up_button.is_active and my_controller._up_endstop.is_active:
-            my_controller.motor_stop()
+            if my_controller.is_calibrated:
+                try:
+                    absolute_position = my_controller.get_absolute_position()
+                except:
+                    absolute_position = None
+            else:
+                absolute_position = None
+
+            live_table.update(_generate_data_table(force, absolute_position, loadcell_limit, force_offset))
+
+            if down_button.is_active and my_controller._down_endstop.is_active:
+                my_controller.motor_stop()
+            if up_button.is_active and my_controller._up_endstop.is_active:
+                my_controller.motor_stop()
 
     if my_loadcell.is_calibrated:
         my_loadcell.stop_reading()
@@ -189,73 +251,286 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     
     return
 
-def read_test_parameters(test_type:bool, default_clamps_distance:float):
+def _read_monotonic_test_parameters():
+    test_parameters = {}
+
+    test_parameters['cross_section'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the sample cross section [mm²]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm²'
+    }
+
+    test_parameters['clamps_distance'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the clamps distance [mm]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(constants.DEFAULT_CLAMPS_DISTANCE)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
+    test_parameters['displacement'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the desired displacement [mm]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
+    test_parameters['linear_speed'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the desired linear speed [mm/s]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm/s'
+    }
+
+    return test_parameters
+
+def _read_cyclic_test_parameters():
+    test_parameters = {}
+
+    test_parameters['cross_section'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the sample cross section [mm²]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm²'
+    }
+
+    test_parameters['clamps_distance'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the clamps distance [mm]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(constants.DEFAULT_CLAMPS_DISTANCE)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
+    test_parameters['cycles_number'] = float(
+        inquirer.text(
+            message='Insert the number of cycles to execute:',
+            validate=validator.NumberValidator(float_allowed=False)
+        ).execute()
+    )
+
+    # CYCLIC PHASE PARAMETERS
+    cyclic_phase_parameters = {}
+
+    cyclic_phase_parameters['cyclic_upper_limit'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the cycle upper limit as a displacement with respect to the current position [mm]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
+    cyclic_phase_parameters['cyclic_lower_limit'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the cycle lower limit as a displacement with respect to the current position [mm]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(0)
+            ).execute()
+        ),
+        'unit': 'mm'
+    }
+
+    cyclic_phase_parameters['cyclic_speed'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the speed to employ during each load cycle [mm/s]:',
+                validate=validator.NumberValidator(float_allowed=True)
+            ).execute()
+        ),
+        'unit': 'mm/s'
+    }
+
+    cyclic_phase_parameters['cyclic_return_speed'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the speed to employ during each unload cycle [mm/s]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(cyclic_phase_parameters['cyclic_speed']['value'])
+            ).execute()
+        ),
+        'unit': 'mm/s'
+    }
+
+    cyclic_phase_parameters['cyclic_delay'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the delay before starting a new load cycle [s]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(0)
+            ).execute()
+        ),
+        'unit': 's'
+    }
+
+    cyclic_phase_parameters['cyclic_return_delay'] = {
+        'value': float(
+            inquirer.text(
+                message='Insert the delay before unloading the specimen [s]:',
+                validate=validator.NumberValidator(float_allowed=True),
+                default=str(0)
+            ).execute()
+        ),
+        'unit': 's'
+    }
+
+    test_parameters = {**test_parameters, **cyclic_phase_parameters}
+
+    # PRETENSIONING PHASE PARAMETERS
+    pretensioning_phase_parameters = {}
+
+    pretensioning_phase_parameters['is_pretensioning_set'] = inquirer.confirm(
+        message='Do you want to perform a pretensioning cycle?'
+    ).execute()
+
+    if pretensioning_phase_parameters['is_pretensioning_set'] is True:
+        pretensioning_phase_parameters['pretensioning_speed'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the speed to employ during each load cycle [mm/s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_speed']['value'])
+                ).execute()
+            ),
+            'unit': 'mm/s'
+        }
+
+        pretensioning_phase_parameters['pretensioning_return_speed'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the speed to employ during each unload cycle [mm/s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_return_speed']['value'])
+                ).execute()
+            ),
+            'unit': 'mm/s'
+        }
+
+        pretensioning_phase_parameters['pretensioning_return_delay'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the delay before unloading the specimen during the pretensioning [s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_return_delay']['value'])
+                ).execute()
+            ),
+            'unit': 's'
+        }
+
+        pretensioning_phase_parameters['pretensioning_after_delay'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the delay before starting the cyclic phase [s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(0)
+                ).execute()
+            ),
+            'unit': 's'
+        }
+
+    test_parameters = {**test_parameters, **pretensioning_phase_parameters}
+
+    # FAILURE PHASE PARAMETERS
+    failure_phase_parameters = {}
+
+    failure_phase_parameters['is_failure_set'] = inquirer.confirm(
+        message='Do you want the test to finish by reaching specimen failure?'
+    ).execute()
+
+    if failure_phase_parameters['is_failure_set'] is True:
+        failure_phase_parameters['failure_speed'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the speed to employ while reaching failure [mm/s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(cyclic_phase_parameters['cyclic_speed']['value'])
+                ).execute()
+            ),
+            'unit': 'mm/s'
+        }
+
+        failure_phase_parameters['failure_before_delay'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the delay before starting the failure phase [s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(0)
+                ).execute()
+            ),
+            'unit': 's'
+        }
+
+    test_parameters = {**test_parameters, **failure_phase_parameters}
+
+    return test_parameters
+
+def read_test_parameters(test_type:bool):
     is_confirmed = False
 
+    timestamp = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
+    test_parameters = {
+        'test_id': timestamp,
+        'test_type': test_type,
+        'date': timestamp
+    }
+
     while not is_confirmed:
-        cross_section = inquirer.text(
-            message='Insert the sample cross section [mm²]:',
-            validate=validator.NumberValidator(float_allowed=True)
-        ).execute()
+        if test_type is 'monotonic':
+            monotonic_test_parameters = _read_monotonic_test_parameters()
+            test_parameters = {**test_parameters, **monotonic_test_parameters}
+        elif test_type is 'cyclic':
+            cyclic_test_parameters = _read_cyclic_test_parameters()
+            test_parameters = {**test_parameters, **cyclic_test_parameters}
+        elif test_type == 'static':
+            pass
 
-        displacement = inquirer.text(
-            message='Insert the desired displacement [mm]:',
-            validate=validator.NumberValidator(float_allowed=True)
-        ).execute()
-
-        linear_speed = inquirer.text(
-            message='Insert the desired linear speed [mm/s]:',
-            validate=validator.NumberValidator(float_allowed=True)
-        ).execute()
-
-        clamps_distance = inquirer.text(
-            message='Insert the clamps distance [mm]:',
-            validate=validator.NumberValidator(float_allowed=True),
-            default=str(default_clamps_distance)
-        ).execute()
-
-        default_test_id = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
-        test_id = inquirer.text(
+        test_parameters['test_id'] = inquirer.text(
             message='Insert the ID for this session:',
             validate=validator.EmptyInputValidator(),
             transformer=lambda result: ' '.join(result.split()).replace(' ', '_'),
             filter=lambda result: ' '.join(result.split()).replace(' ', '_'),
-            default=default_test_id
+            default=timestamp
         ).execute()
 
         is_confirmed = inquirer.confirm(
             message='Confirm?'
         ).execute()
 
-    test_parameters = {
-        'test_id': test_id,
-        'test_type': test_type,
-        'cross_section': {
-            'value': float(cross_section),
-            'unit': 'mm²'
-        },
-        'displacement': {
-            'value': float(displacement),
-            'unit': 'mm'
-        },
-        'linear_speed': {
-            'value': float(linear_speed),
-            'unit': 'mm/s'
-        },
-        'clamps_distance': {
-            'value': float(clamps_distance),
-            'unit': 'mm'
-        }
-    }
-
     return test_parameters
 
 def save_test_parameters(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str):
-    test_parameters['calibration'] = my_loadcell.get_calibration()
-    test_parameters['initial_gauge_length'] = {
-        'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
-        'unit': 'mm'
-    }
+    if my_loadcell.is_calibrated:
+        calibration = my_loadcell.get_calibration()
+        test_parameters['calibration'] = calibration
+        test_parameters['loadcell_type'] = '{} {}'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit'])
+    
+    if my_controller.is_calibrated:
+        if test_parameters['test_type'] == 'monotonic' or test_parameters['test_type'] == 'cyclic':
+            test_parameters['initial_gauge_length'] = {
+                'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
+                'unit': 'mm'
+            }
 
     filename = 'test_parameters.json'
     with open(output_dir + r'/' + filename, 'w') as f:
@@ -263,94 +538,353 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
 
     return
 
-def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
-    with console.status('Collecting data...'):
-        displacement = test_parameters['displacement']['value']
-        linear_speed = test_parameters['linear_speed']['value']
-        cross_section = test_parameters['cross_section']['value']
-        initial_gauge_length = test_parameters['initial_gauge_length']['value']
+def _start_monotonic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
+    
+    displacement = test_parameters['displacement']['value']
+    linear_speed = test_parameters['linear_speed']['value']
+    cross_section = test_parameters['cross_section']['value']
+    initial_gauge_length = test_parameters['initial_gauge_length']['value']
+    initial_absolute_position = my_controller.get_absolute_position()
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
 
-        stop_flag = False
-        def switch_stop_flag():
-            nonlocal stop_flag
-            stop_flag = True
-            return
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
 
-        stop_button = Button(pin=stop_button_pin)
-        stop_button.when_released = lambda: switch_stop_flag()
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
 
-        fig = plt.figure()
-        ax = plt.axes()
-        line, = ax.plot([], lw=3)
-        text = ax.text(0.8, 0.5, '')
+    strains = []
+    forces = []
+    batch_index = 0
 
-        xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
-        ylim = 10
-        ax.set_xlim([0, xlim])
-        ax.set_ylim([0, ylim])
-        
-        fig.canvas.draw()
-        ax_background = fig.canvas.copy_from_bbox(ax.bbox)
-        plt.show(block=False)
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(forces, strains, lw=3)
 
-        force = []
-        strain = []
-        batch_index = 0
-        line.set_data(strain, force)
+    xlim = round((displacement / initial_gauge_length) * 1.1 * 100) # 10% margin
+    ylim = loadcell_limit
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Strain (%)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Strain')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
 
-        _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
-        my_loadcell.start_reading()
+    live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
 
+    _, _, t0 = my_controller.run(linear_speed, displacement, controller.UP)
+    my_loadcell.start_reading()
+
+    with live_table:
         while my_controller.is_running:
             if stop_flag:
                 my_controller.abort()
             else:
-                if my_loadcell.is_batch_ready(batch_index):
+                while my_loadcell.is_batch_ready(batch_index):
                     batch, batch_index = my_loadcell.get_batch(batch_index)
                     batch['t'] = batch['t'] - t0
+                    batch['strain'] = (batch['t'] * linear_speed / initial_gauge_length) * 100
 
-                    strains = (batch['t'] * linear_speed / initial_gauge_length) * 100     # in percentage
+                    forces.extend(batch['F'])
+                    strains.extend(batch['strain'])
 
-                    force.extend(batch['F'])
-                    strain.extend(strains)
-
-                    line.set_data(strain, force)
-
-                    # restore background
-                    fig.canvas.restore_region(ax_background)
-
-                    # redraw just the points
-                    ax.draw_artist(line)
-                    ax.draw_artist(text)
-
-                    # fill in the axes rectangle
+                    line.set_data(strains, forces)
+                    ax.redraw_in_frame()
                     fig.canvas.blit(ax.bbox)
-
-                    # in this post http://bastibe.de/2013-05-30-speeding-up-matplotlib.html
-                    # it is mentionned that blit causes strong memory leakage.
-                    # however, I did not observe that.
                     fig.canvas.flush_events()
                 else:
                     pass
+                    
+                live_table.update(
+                    _generate_data_table(
+                        force=forces[-1] if len(forces) > 0 else None, 
+                        absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                        loadcell_limit=loadcell_limit,
+                        force_offset=my_loadcell.get_offset(is_force=True),
+                        test_parameters=test_parameters
+                    )
+                )
 
+    utility.delete_last_lines(printed_lines)
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
 
     data = my_loadcell.stop_reading()
     stop_button.when_released = None
-    
-    with console.status('Saving test data...'):
-        data['t'] = data['t'] - t0
-        data['displacement'] = data['t'] * linear_speed
-        data['F_raw'] = data['F']
-        data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
-        data['stress_raw'] = data['F_raw'] / cross_section
-        data['stress_med20'] = data['F_med20'] / cross_section
-        data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
-        data.loc[data.index[0], 'cross_section'] = cross_section
-        data.loc[data.index[0], 'initial_gauge_length'] = initial_gauge_length
 
+    data['t'] = data['t'] - t0
+    data['displacement'] = data['t'] * linear_speed
+    data['F_raw'] = data['F']
+    data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
+    data['stress_raw'] = data['F_raw'] / cross_section
+    data['stress_med20'] = data['F_med20'] / cross_section
+    data['strain'] = (data['t'] * linear_speed / initial_gauge_length) * 100
+    data.loc[data.index[0], 'cross_section'] = cross_section
+    data.loc[data.index[0], 'initial_gauge_length'] = initial_gauge_length
+
+    return data
+
+def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, stop_button_pin:int):
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
+    
+    # GENERIC PARAMETERS
+    cycles_number = test_parameters['cycles_number']
+    cross_section = test_parameters['cross_section']['value']
+    initial_gauge_length = test_parameters['initial_gauge_length']['value']
+    initial_absolute_position = my_controller.get_absolute_position()
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
+
+    # CYCLIC PHASE PARAMETERS
+    cyclic_upper_limit = test_parameters['cyclic_upper_limit']['value']
+    cyclic_lower_limit = test_parameters['cyclic_lower_limit']['value']
+    cyclic_speed = test_parameters['cyclic_speed']['value']
+    cyclic_return_speed = test_parameters['cyclic_return_speed']['value']
+    cyclic_delay = test_parameters['cyclic_delay']['value']
+    cyclic_return_delay = test_parameters['cyclic_return_delay']['value']
+
+    # PRETENSIONING PHASE PARAMETERS
+    is_pretensioning_set = test_parameters['is_pretensioning_set']
+    if is_pretensioning_set:
+        pretensioning_speed = test_parameters['pretensioning_speed']['value']
+        pretensioning_return_speed = test_parameters['pretensioning_return_speed']['value']
+        pretensioning_return_delay = test_parameters['pretensioning_return_delay']['value']
+        pretensioning_after_delay = test_parameters['pretensioning_after_delay']['value']
+
+    # FAILURE PHASE PARAMETERS
+    is_failure_set = test_parameters['is_failure_set']
+    if is_failure_set:
+        pass
+
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
+
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
+
+    strains = []
+    forces = []
+
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(forces, strains, lw=3)
+
+    xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100) # 10% margin
+    ylim = loadcell_limit
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Strain (%)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Strain')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
+
+    t0 = time.time()
+
+    data_list = []
+    
+    if is_pretensioning_set:
+        # PRETENSIONING PHASE - RUN
+        live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+        batch_index = 0
+        if stop_flag is False:
+            my_controller.run(pretensioning_speed, cyclic_upper_limit, controller.UP)
+            my_loadcell.start_reading()
+
+            with live_table:
+                while my_controller.is_running:
+                    if stop_flag:
+                        my_controller.abort()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0
+                            batch['strain'] = (batch['t'] * pretensioning_speed / initial_gauge_length) * 100
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            line.set_data(strains, forces)
+                            ax.redraw_in_frame()
+                            fig.canvas.blit(ax.bbox)
+                            fig.canvas.flush_events()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+
+        # PRETENSIONING PHASE - RETURN DELAY
+        live_table = Live(_generate_data_table(None, None, None), refresh_per_second=12, transient=True)
+        batch_index = 0
+        if stop_flag is False:
+            t0_delay = my_controller.hold_torque()
+            my_loadcell.start_reading()
+
+            with live_table:
+                while my_controller.is_holding:
+                    if stop_flag or time.time() - t0_delay >= pretensioning_return_delay:
+                        my_controller.release_torque()
+                    else:
+                        while my_loadcell.is_batch_ready(batch_index):
+                            batch, batch_index = my_loadcell.get_batch(batch_index)
+                            batch['t'] = batch['t'] - t0
+                            batch['strain'] = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
+
+                            forces.extend(batch['F'])
+                            strains.extend(batch['strain'])
+
+                            line.set_data(strains, forces)
+                            ax.redraw_in_frame()
+                            fig.canvas.blit(ax.bbox)
+                            fig.canvas.flush_events()
+                        else:
+                            pass
+                            
+                        live_table.update(
+                            _generate_data_table(
+                                force=forces[-1] if len(forces) > 0 else None, 
+                                absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
+                                loadcell_limit=loadcell_limit
+                            )
+                        )
+
+            data_list.append(my_loadcell.stop_reading())
+        
+    utility.delete_last_lines(printed_lines)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
+
+    stop_button.when_released = None
+    return
+
+def _start_static_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, stop_button_pin:int):
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
+    printed_lines = 1
+
+    loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
+    
+    stop_flag = False
+    def _switch_stop_flag():
+        nonlocal stop_flag
+        stop_flag = True
+        return
+
+    stop_button = Button(pin=stop_button_pin)
+    stop_button.when_released = lambda: _switch_stop_flag()
+
+    timings = []
+    forces = []
+    batch_index = 0
+
+    fig = plt.figure(facecolor='#DEDEDE')
+    ax = plt.axes()
+    line, = ax.plot(timings, forces, lw=3)
+
+    xlim = 30 # in seconds
+    ylim = loadcell_limit
+    ax.set_xlim([0, xlim])
+    ax.set_ylim([0, ylim])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Force (N)')
+    ax.set_title('Force vs. Time')
+    
+    fig.canvas.draw()
+    plt.show(block=False)
+
+    live_table = Live(_generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+
+    t0 = my_controller.hold_torque()
+    my_loadcell.start_reading()
+
+    with live_table:
+        while my_controller.is_holding:
+            if stop_flag:
+                my_controller.release_torque()
+            else:
+                while my_loadcell.is_batch_ready(batch_index):
+                    batch, batch_index = my_loadcell.get_batch(batch_index)
+                    batch['t'] = batch['t'] - t0
+
+                    forces.extend(batch['F'])
+                    timings.extend(batch['t'])
+
+                    if batch['t'].iloc[-1] > xlim:
+                        ax.set_xlim([(xlim / 2), (xlim / 2) + batch['t'].iloc[-1]])
+                        xlim = (xlim / 2) + batch['t'].iloc[-1]
+
+                    line.set_data(timings, forces)
+                    ax.redraw_in_frame()
+                    fig.canvas.blit(ax.bbox)
+                    fig.canvas.flush_events()
+                else:
+                    pass
+
+                live_table.update(
+                    _generate_data_table(
+                        force=forces[-1] if len(forces) > 0 else None,
+                        absolute_position=None,
+                        loadcell_limit=loadcell_limit,
+                        force_offset=my_loadcell.get_offset(is_force=True)
+                    )
+                )
+
+    utility.delete_last_lines(printed_lines)
+    console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...', '[green]:heavy_check_mark:[/green]')
+
+    data = my_loadcell.stop_reading()
+    stop_button.when_released = None
+
+    data['t'] = data['t'] - t0
+    data['F_raw'] = data['F']
+    data['F_med20'] = scipy.signal.medfilt(data['F'], 21)
+
+    return data
+
+def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, test_parameters:dict, output_dir:str, stop_button_pin:int):
+    data = None
+
+    if test_parameters['test_type'] == 'monotonic':
+        data = _start_monotonic_test(
+            my_controller=my_controller,
+            my_loadcell=my_loadcell,
+            test_parameters=test_parameters,
+            stop_button_pin=stop_button_pin
+        )
+    elif test_parameters['test_type'] == 'cyclic':
+        data = _start_cyclic_test(
+            my_controller=my_controller,
+            my_loadcell=my_loadcell,
+            test_parameters=test_parameters,
+            stop_button_pin=stop_button_pin
+        )
+    elif test_parameters['test_type'] == 'static':
+        data = _start_static_test(
+            my_controller=my_controller,
+            my_loadcell=my_loadcell,
+            stop_button_pin=stop_button_pin
+        )
+
+    with console.status('Saving test data...'):
         filename = test_parameters['test_id'] + '.csv'
-        data.to_csv(output_dir + r'/' + filename, index=False)
+        if data is not None:
+            data.to_csv(output_dir + r'/' + filename, index=False)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...', '[green]:heavy_check_mark:[/green]')
     
