@@ -13,6 +13,13 @@ from controller import controller
 from loadcell import loadcell
 from src import constants, helpers, table
 
+# HACK: suppress Qt5 polluting error messages
+from pyqtgraph.Qt import QtCore
+def handler(msg_type, msg_log_context, msg_string):
+    pass
+QtCore.qInstallMessageHandler(handler)
+# HACK: end suppression
+
 def _init_plot_data(plot_item, plot_color):
     plot_data = plot_item.plot(
     pen=None, symbol=constants.PLOTS_SYMBOL, symbolSize=constants.PLOTS_SYMBOL_SIZE)
@@ -41,6 +48,7 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
 
         plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
         batch_index = 0
+        utility.delete_last_lines(n_lines=1)
 
         live_table = Live(
             table.generate_data_table(None, None, None, None),
@@ -114,6 +122,7 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
 
         plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
         batch_index = 0
+        utility.delete_last_lines(n_lines=1)
 
         fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
 
