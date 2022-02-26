@@ -118,8 +118,8 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
         fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
 
         live_table = Live(
-            table.generate_data_table(None, None, None, None)
-            refresh_per_second=12
+            table.generate_data_table(None, None, None, None),
+            refresh_per_second=12,
             transient=True
         )
 
