@@ -1,2 +1,3 @@
 InquirerPy==0.2.4
 rich==10.13.0
+pyqtgraph==0.12.3

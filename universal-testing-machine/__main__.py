@@ -3,7 +3,8 @@ from rich.console import Console
 console = Console()
 from controller import controller
 from loadcell import loadcell
-import helpers
+from src import calibration, configuration, test, helpers
+from src import constants
 
 my_controller = controller.LinearController(
     motor=controller.stepper.StepperMotor(
@@ -21,7 +22,8 @@ my_controller = controller.LinearController(
 
 my_loadcell = loadcell.LoadCell(
     dat_pin=5,
-    clk_pin=6
+    clk_pin=6,
+    clamp_grams=constants.CLAMP_GRAMS
 )
 
 console.rule('[bold red]UNIVERSAL TESTING MACHINE')
@@ -43,10 +45,7 @@ while result is not None:
     ).execute()
 
     if result == 'loadcell_calibration':
-        calibration_dir = helpers.create_calibration_dir()
-        helpers.check_existing_calibration(calibration_dir, my_loadcell)
-        if my_loadcell.is_calibrated is not True:
-            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+        calibration.calibrate_loadcell(my_loadcell)
     elif result == 'manual':
         helpers.start_manual_mode(
             my_controller,
@@ -62,15 +61,12 @@ while result is not None:
             default='50',
             validate=validator.NumberValidator(float_allowed=True)
         ).execute())
-        helpers.calibrate_controller(my_controller=my_controller)
+        calibration.calibrate_controller(my_controller=my_controller)
         
         if my_controller.is_calibrated:
             helpers.adjust_crossbar_position(my_controller=my_controller, adjustment_position=adjustment_position)
 
-            calibration_dir = helpers.create_calibration_dir()
-            helpers.check_existing_calibration(calibration_dir, my_loadcell)
-            if my_loadcell.is_calibrated is not True:
-                helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+            calibration.calibrate_loadcell(my_loadcell)
 
             helpers.start_manual_mode(
                 my_controller,
@@ -81,22 +77,19 @@ while result is not None:
                 down_button_pin=27
             )
 
-            test_parameters = helpers.read_test_parameters(test_type=result)
-            output_dir = helpers.create_output_dir(test_parameters)
-            helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
+            test_parameters = configuration.set_test_parameters(test_type=result)
+            test_dir = helpers.create_test_dir(test_parameters, helpers.create_dir('./output'))
+            helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, test_dir)
 
-            helpers.start_test(
+            test.start_test(
                 my_controller,
                 my_loadcell,
                 test_parameters,
-                output_dir=output_dir,
+                test_dir=test_dir,
                 stop_button_pin=22
             )
     elif result == 'static':
-        calibration_dir = helpers.create_calibration_dir()
-        helpers.check_existing_calibration(calibration_dir, my_loadcell)
-        if my_loadcell.is_calibrated is not True:
-            helpers.calibrate_loadcell(my_loadcell, calibration_dir)
+        calibration.calibrate_loadcell(my_loadcell)
         
         helpers.start_manual_mode(
                 my_controller,
@@ -108,14 +101,14 @@ while result is not None:
             )
 
         test_parameters = helpers.read_test_parameters(test_type=result)
-        output_dir = helpers.create_output_dir(test_parameters)
-        helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, output_dir)
+        test_dir = helpers.create_test_dir(test_parameters, helpers.create_dir('./output'))
+        helpers.save_test_parameters(my_controller, my_loadcell, test_parameters, test_dir)
 
-        helpers.start_test(
+        test.start_test(
                 my_controller,
                 my_loadcell,
                 test_parameters,
-                output_dir=output_dir,
+                test_dir=test_dir,
                 stop_button_pin=22
             )
     
