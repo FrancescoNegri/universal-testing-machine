@@ -1,13 +1,12 @@
 import os
 from statistics import mean
-from rich import box
 from rich.console import Console
-from rich.table import Table
 from rich.live import Live
 console = Console()
 from utility import utility
 from controller import controller
 from loadcell import loadcell
+from src import table
 import json
 import scipy.signal
 from gpiozero import Button
@@ -45,52 +44,6 @@ def adjust_crossbar_position(my_controller:controller.LinearController, adjustme
 
     return
 
-def generate_data_table(force:float, absolute_position:float, loadcell_limit:float, force_offset:float, test_parameters:dict = None):
-    if force is None:
-        force = '-'
-        loadcell_usage = '-'
-        loadcell_usage_style = None
-    elif loadcell_limit is None:
-        force = round(force, 5)
-        loadcell_usage = '-'
-        loadcell_usage_style = None
-    else:
-        force = round(force, 5)
-        if force_offset is None:
-            force_offset = 0
-        loadcell_usage = abs(round(((force + force_offset) / loadcell_limit) * 100, 2))
-        loadcell_usage_style = 'red' if loadcell_usage > 85 else None
-
-    if absolute_position is None:
-        absolute_position = '-'
-        test_progress = '-'
-    else:
-        absolute_position = round(absolute_position, 2)
-
-        if test_parameters is None:
-            test_progress = None
-        elif test_parameters['test_type'] == 'monotonic':
-            initial_absolute_position = test_parameters['initial_gauge_length']['value'] - test_parameters['clamps_distance']['value']
-            test_progress = ((absolute_position - initial_absolute_position) / test_parameters['displacement']['value']) * 100
-            test_progress = round(test_progress, 1)
-        elif test_parameters['test_type'] == 'cyclic':
-            pass
-
-    table = Table(box=box.ROUNDED)
-    table.add_column('Force', justify='center', min_width=12)
-    table.add_column('Absolute position', justify='center', min_width=20)
-    table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
-
-    if test_parameters is None:
-        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
-    elif test_parameters['test_type'] == 'monotonic':
-        table.add_column('Test progress', justify='center', min_width=12)        
-        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
-    elif test_parameters['test_type'] == 'cyclic':
-        table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
-
-    return table
-
 def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loadcell.LoadCell, speed:float, mode_button_pin:int, up_button_pin:int, down_button_pin:int):
     mode = 0
     def _switch_mode():
@@ -122,7 +75,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     batch_index = 0
     batch_size = 25
 
-    live_table = Live(generate_data_table(force, absolute_position, loadcell_limit, force_offset), refresh_per_second=12, transient=True)
+    live_table = Live(table.generate_data_table(force, absolute_position, loadcell_limit, force_offset), refresh_per_second=12, transient=True)
     
     with live_table:
         while mode == 0:            
@@ -141,7 +94,7 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
             else:
                 absolute_position = None
 
-            live_table.update(generate_data_table(force, absolute_position, loadcell_limit, force_offset))
+            live_table.update(table.generate_data_table(force, absolute_position, loadcell_limit, force_offset))
 
             if down_button.is_active and my_controller._down_endstop.is_active:
                 my_controller.motor_stop()
