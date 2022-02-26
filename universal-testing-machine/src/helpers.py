@@ -75,7 +75,11 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
     batch_index = 0
     batch_size = 25
 
-    live_table = Live(table.generate_data_table(force, absolute_position, loadcell_limit, force_offset), refresh_per_second=12, transient=True)
+    live_table = Live(
+        table.generate_data_table(force, absolute_position, loadcell_limit, force_offset),
+        refresh_per_second=12,
+        transient=True
+    )
     
     with live_table:
         while mode == 0:            
@@ -94,7 +98,9 @@ def start_manual_mode(my_controller:controller.LinearController, my_loadcell:loa
             else:
                 absolute_position = None
 
-            live_table.update(table.generate_data_table(force, absolute_position, loadcell_limit, force_offset))
+            live_table.update(
+                table.generate_data_table(force, absolute_position, loadcell_limit, force_offset)
+            )
 
             if down_button.is_active and my_controller._down_endstop.is_active:
                 my_controller.motor_stop()
