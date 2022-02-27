@@ -28,6 +28,14 @@ def _get_initial_position(test_parameters:dict):
 
     return initial_position
 
+def _get_relative_position(test_parameters:dict, absolute_position:float):
+    relative_position = None
+
+    if absolute_position is not None:
+        relative_position = absolute_position - _get_initial_position(test_parameters)
+
+    return relative_position
+
 def _get_test_progress(test_parameters:dict, absolute_position:float):
     # TODO: add test progress computation for cyclic tests
     if absolute_position is None:
@@ -43,15 +51,16 @@ def _get_test_progress(test_parameters:dict, absolute_position:float):
 def _generate_cyclic_data_table(test_parameters:dict, force:float, absolute_position:float, loadcell_limit:float, force_offset:float):
     loadcell_usage, loadcell_usage_style = _get_loadcell_usage(force, loadcell_limit, force_offset)
     # TODO: add cyclic test progress
+    relative_position = _get_relative_position(test_parameters, absolute_position)
     force = _parse_value(force, ndigits=constants.N_DIGITS_FORCE)
-    absolute_position = _parse_value(absolute_position, ndigits=constants.N_DIGITS_POSITION)
+    relative_position = _parse_value(relative_position, ndigits=constants.N_DIGITS_POSITION)
 
     table = Table(box=box.ROUNDED)
     table.add_column('Force', justify='center', min_width=12)
-    table.add_column('Absolute position', justify='center', min_width=20)
+    table.add_column('Relative position', justify='center', min_width=20)
     table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
     
-    table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %')
+    table.add_row(f'{force} N', f'{relative_position} mm', f'{loadcell_usage} %')
 
     return table
 
@@ -72,16 +81,17 @@ def _generate_manual_data_table(force:float, absolute_position:float, loadcell_l
 def _generate_monotonic_data_table(test_parameters:dict, force:float, absolute_position:float, loadcell_limit:float, force_offset:float):
     loadcell_usage, loadcell_usage_style = _get_loadcell_usage(force, loadcell_limit, force_offset)
     test_progress = _get_test_progress(test_parameters, absolute_position)
+    relative_position = _get_relative_position(test_parameters, absolute_position)
     force = _parse_value(force, ndigits=constants.N_DIGITS_FORCE)
-    absolute_position = _parse_value(absolute_position, ndigits=constants.N_DIGITS_POSITION)
+    relative_position = _parse_value(relative_position, ndigits=constants.N_DIGITS_POSITION)
 
     table = Table(box=box.ROUNDED)
     table.add_column('Force', justify='center', min_width=12)
-    table.add_column('Absolute position', justify='center', min_width=20)
+    table.add_column('Relative position', justify='center', min_width=20)
     table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
     table.add_column('Test progress', justify='center', min_width=12)        
     
-    table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
+    table.add_row(f'{force} N', f'{relative_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
 
     return table
 
