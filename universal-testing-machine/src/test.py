@@ -49,8 +49,7 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
         plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
         batch_index = 0
 
-        # HACK: suppress libEGL warning message
-        utility.delete_last_lines(n_lines=1)
+        # FIXME: suppress libEGL warning message
 
         live_table = Live(
             table.generate_data_table(None, None, None, None),
@@ -127,8 +126,7 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
 
         fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
 
-        # HACK: suppress libEGL warning message
-        utility.delete_last_lines(n_lines=1)
+        # FIXME: suppress libEGL warning message
 
         live_table = Live(
             table.generate_data_table(None, None, None, None),
