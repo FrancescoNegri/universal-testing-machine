@@ -93,6 +93,7 @@ def generate_data_table(force:float, absolute_position:float, loadcell_limit:flo
     elif test_parameters['test_type'] == 'cyclic':
         table = _generate_cyclic_data_table(test_parameters, force, absolute_position, loadcell_limit, force_offset)
     else:
+        # TODO: add static data table
         table = None
     
     return table
