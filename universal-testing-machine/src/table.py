@@ -23,6 +23,23 @@ def _get_loadcell_usage(force:float, loadcell_limit:float, force_offset:float):
 
     return loadcell_usage, loadcell_usage_style
 
+def _get_initial_position(test_parameters:dict):
+    initial_position = test_parameters['initial_gauge_length']['value'] - test_parameters['clamps_distance']['value']
+
+    return initial_position
+
+def _get_test_progress(test_parameters:dict, absolute_position:float):
+    # TODO: add test progress computation for cyclic tests
+    if absolute_position is None:
+        test_progress = None
+    else:
+        initial_position = _get_initial_position(test_parameters)
+        test_progress = ((absolute_position - initial_position) / test_parameters['displacement']['value']) * 100
+
+    test_progress = _parse_value(test_progress, ndigits=constants.N_DIGITS_PROGRESS)
+
+    return test_progress
+
 def _generate_manual_data_table(force:float, absolute_position:float, loadcell_limit:float, force_offset:float):
     loadcell_usage, loadcell_usage_style = _get_loadcell_usage(force, loadcell_limit, force_offset)
     force = _parse_value(force, ndigits=constants.N_DIGITS_FORCE)
@@ -37,10 +54,30 @@ def _generate_manual_data_table(force:float, absolute_position:float, loadcell_l
 
     return table
 
+def _generate_monotonic_data_table(test_parameters:dict, force:float, absolute_position:float, loadcell_limit:float, force_offset:float):
+    loadcell_usage, loadcell_usage_style = _get_loadcell_usage(force, loadcell_limit, force_offset)
+    test_progress = _get_test_progress(test_parameters, absolute_position)
+    force = _parse_value(force, ndigits=constants.N_DIGITS_FORCE)
+    absolute_position = _parse_value(absolute_position, ndigits=constants.N_DIGITS_POSITION)
+
+    table = Table(box=box.ROUNDED)
+    table.add_column('Force', justify='center', min_width=12)
+    table.add_column('Absolute position', justify='center', min_width=20)
+    table.add_column('Load Cell usage', justify='center', min_width=12, style=loadcell_usage_style)
+    table.add_column('Test progress', justify='center', min_width=12)        
+    
+    table.add_row(f'{force} N', f'{absolute_position} mm', f'{loadcell_usage} %', f'{test_progress} %')
+
+    return table
+
 def generate_data_table(force:float, absolute_position:float, loadcell_limit:float, force_offset:float, test_parameters:dict = None):
     
-    table = _generate_manual_data_table(force, absolute_position, loadcell_limit, force_offset)
-
+    if test_parameters is None:
+        table = _generate_manual_data_table(force, absolute_position, loadcell_limit, force_offset)
+    elif test_parameters['test_type'] == 'monotonic':
+        table = _generate_monotonic_data_table(test_parameters, force, absolute_position, loadcell_limit, force_offset)
+    else:
+        table = None
 
     # if absolute_position is None:
     #     absolute_position = '-'
