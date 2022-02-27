@@ -7,6 +7,7 @@ from utility import utility
 from controller import controller
 from loadcell import loadcell
 from src import table
+from src import constants
 import json
 import scipy.signal
 from gpiozero import Button
@@ -128,7 +129,7 @@ def save_test_parameters(my_controller:controller.LinearController, my_loadcell:
         test_parameters['loadcell_type'] = '{} {}'.format(calibration['loadcell_limit']['value'], calibration['loadcell_limit']['unit'])
     
     if my_controller.is_calibrated:
-        if test_parameters['test_type'] == 'monotonic' or test_parameters['test_type'] == 'cyclic':
+        if test_parameters['test_type'] == constants.MONOTONIC or test_parameters['test_type'] == constants.CYCLIC:
             test_parameters['initial_gauge_length'] = {
                 'value': test_parameters['clamps_distance']['value'] + my_controller.get_absolute_position(),
                 'unit': 'mm'

@@ -88,9 +88,9 @@ def _generate_monotonic_data_table(test_parameters:dict, force:float, absolute_p
 def generate_data_table(force:float, absolute_position:float, loadcell_limit:float, force_offset:float, test_parameters:dict = None):
     if test_parameters is None:
         table = _generate_manual_data_table(force, absolute_position, loadcell_limit, force_offset)
-    elif test_parameters['test_type'] == 'monotonic':
+    elif test_parameters['test_type'] == constants.MONOTONIC:
         table = _generate_monotonic_data_table(test_parameters, force, absolute_position, loadcell_limit, force_offset)
-    elif test_parameters['test_type'] == 'cyclic':
+    elif test_parameters['test_type'] == constants.CYCLIC:
         table = _generate_cyclic_data_table(test_parameters, force, absolute_position, loadcell_limit, force_offset)
     else:
         # TODO: add static data table

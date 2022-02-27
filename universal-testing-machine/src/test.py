@@ -588,21 +588,21 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
     data = None
     data_labels = None
 
-    if test_parameters['test_type'] == 'monotonic':
+    if test_parameters['test_type'] == constants.MONOTONIC:
         data = _start_monotonic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
             stop_button_pin=stop_button_pin
         )
-    elif test_parameters['test_type'] == 'cyclic':
+    elif test_parameters['test_type'] == constants.CYCLIC:
         data, data_labels = _start_cyclic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
             stop_button_pin=stop_button_pin
         )
-    elif test_parameters['test_type'] == 'static':
+    elif test_parameters['test_type'] == constants.STATIC:
         data = _start_static_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,

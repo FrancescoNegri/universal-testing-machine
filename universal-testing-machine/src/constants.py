@@ -15,3 +15,8 @@ PLOT_COLORS_LIST = [
 
 N_DIGITS_FORCE = 5
 N_DIGITS_POSITION = 2
+N_DIGITS_PROGRESS = 2
+
+MONOTONIC = 'monotonic'
+CYCLIC = 'cyclic'
+STATIC = 'static'

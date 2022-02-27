@@ -275,13 +275,13 @@ def _read_test_parameters(test_type: bool):
         'date': timestamp
     }
 
-    if test_type == 'monotonic':
+    if test_type == constants.MONOTONIC:
         monotonic_test_parameters = _read_monotonic_test_parameters()
         test_parameters = {**test_parameters, **monotonic_test_parameters}
-    elif test_type == 'cyclic':
+    elif test_type == constants.CYCLIC:
         cyclic_test_parameters = _read_cyclic_test_parameters()
         test_parameters = {**test_parameters, **cyclic_test_parameters}
-    elif test_type == 'static':
+    elif test_type == constants.STATIC:
         pass
 
     return test_parameters
