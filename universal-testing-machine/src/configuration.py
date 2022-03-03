@@ -6,11 +6,14 @@ from datetime import datetime
 from rich.console import Console
 console = Console()
 
-def _list_configurations(configurations_dir: str):
+def _list_configurations(configurations_dir: str, test_type: str):
     configurations = []
     for f in os.listdir(configurations_dir):
         if os.path.isfile(os.path.join(configurations_dir, f)):
-            configurations.append(f)
+            with open(os.path.join(configurations_dir, f)) as _f:
+                test_parameters = json.load(_f)
+                if test_parameters['test_type'] == test_type:
+                    configurations.append(f)
 
     return configurations
 
@@ -18,8 +21,7 @@ def _load_configuration(configurations_dir: str, configuration_name: str, test_t
     try:
         with open(os.path.join(configurations_dir, configuration_name)) as f:
             test_parameters = json.load(f)
-            if test_parameters['test_type'] == test_type:
-                
+            if test_parameters['test_type'] == test_type: 
                 console.print('[#e5c07b]>[/#e5c07b]', 'Test parameters loaded correctly.')
                 console.print_json(json.dumps(test_parameters))
             else:
@@ -326,7 +328,7 @@ def set_test_parameters(test_type: bool):
         test_parameters = None
         while test_parameters is None:
             configurations_dir = helpers.create_dir('./.configurations')
-            configurations = _list_configurations(configurations_dir)
+            configurations = _list_configurations(configurations_dir, test_type)
             choices = ['Insert new test parameters']
             choices.extend(configurations)
             result = inquirer.fuzzy(
@@ -344,7 +346,7 @@ def set_test_parameters(test_type: bool):
                 ).execute()
                 if result is True:
                     _save_configuration(configurations_dir, test_parameters)
-            # Using an existing set of test parameters
+            # Use an existing set of test parameters
             else:
                 test_parameters = _load_configuration(configurations_dir, configuration_name=result, test_type=test_type)
                 if test_parameters is not None:
