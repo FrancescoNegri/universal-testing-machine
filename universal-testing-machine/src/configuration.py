@@ -344,7 +344,7 @@ def set_test_parameters(test_type: bool):
                 ).execute()
                 if result is True:
                     _save_configuration(configurations_dir, test_parameters)
-            # Using an existing set of test parameters
+            # Use an existing set of test parameters
             else:
                 test_parameters = _load_configuration(configurations_dir, configuration_name=result, test_type=test_type)
                 if test_parameters is not None:
