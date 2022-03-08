@@ -11,7 +11,14 @@ import scipy.signal
 from gpiozero import Button
 from controller import controller
 from loadcell import loadcell
-from src import constants, helpers
+from src import constants, helpers, table
+
+# HACK: suppress Qt5 polluting error messages
+from pyqtgraph.Qt import QtCore
+def handler(msg_type, msg_log_context, msg_string):
+    pass
+QtCore.qInstallMessageHandler(handler)
+# HACK: end suppression
 
 def _init_plot_data(plot_item, plot_color):
     plot_data = plot_item.plot(
@@ -42,7 +49,13 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
         plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
         batch_index = 0
 
-        live_table = Live(helpers.generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+        # FIXME: suppress libEGL warning message
+
+        live_table = Live(
+            table.generate_data_table(None, None, None, None),
+            refresh_per_second=12,
+            transient=True
+        )
 
         my_loadcell.start_reading()
         _, _, t0 = my_controller.run(speed, displacement, direction)
@@ -73,7 +86,7 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
                         pass
 
                     live_table.update(
-                        helpers.generate_data_table(
+                        table.generate_data_table(
                             force=forces[-1] if len(forces) > 0 else None,
                             absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
                             loadcell_limit=loadcell_limit,
@@ -113,7 +126,13 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
 
         fixed_strain = ((my_controller.get_absolute_position() - initial_absolute_position) / initial_gauge_length) * 100
 
-        live_table = Live(helpers.generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+        # FIXME: suppress libEGL warning message
+
+        live_table = Live(
+            table.generate_data_table(None, None, None, None),
+            refresh_per_second=12,
+            transient=True
+        )
 
         my_loadcell.start_reading()
         t0 = my_controller.hold_torque()
@@ -141,7 +160,7 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
                         pass
 
                     live_table.update(
-                        helpers.generate_data_table(
+                        table.generate_data_table(
                             force=forces[-1] if len(forces) > 0 else None,
                             absolute_position=(initial_absolute_position + (strains[-1] * initial_gauge_length / 100)) if len(strains) > 0 else None,
                             loadcell_limit=loadcell_limit,
@@ -507,7 +526,11 @@ def _start_static_test(my_controller: controller.LinearController, my_loadcell: 
     forces = []
     batch_index = 0
 
-    live_table = Live(helpers.generate_data_table(None, None, None, None), refresh_per_second=12, transient=True)
+    live_table = Live(
+        table.generate_data_table(None, None, None, None),
+        refresh_per_second=12,
+        transient=True
+    )
 
     t0 = my_controller.hold_torque()
     my_loadcell.start_reading()
@@ -536,7 +559,7 @@ def _start_static_test(my_controller: controller.LinearController, my_loadcell: 
                     pass
 
                 live_table.update(
-                    helpers.generate_data_table(
+                    table.generate_data_table(
                         force=forces[-1] if len(forces) > 0 else None,
                         absolute_position=None,
                         loadcell_limit=loadcell_limit,
@@ -565,21 +588,21 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
     data = None
     data_labels = None
 
-    if test_parameters['test_type'] == 'monotonic':
+    if test_parameters['test_type'] == constants.MONOTONIC:
         data = _start_monotonic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
             stop_button_pin=stop_button_pin
         )
-    elif test_parameters['test_type'] == 'cyclic':
+    elif test_parameters['test_type'] == constants.CYCLIC:
         data, data_labels = _start_cyclic_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,
             test_parameters=test_parameters,
             stop_button_pin=stop_button_pin
         )
-    elif test_parameters['test_type'] == 'static':
+    elif test_parameters['test_type'] == constants.STATIC:
         data = _start_static_test(
             my_controller=my_controller,
             my_loadcell=my_loadcell,

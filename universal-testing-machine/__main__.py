@@ -36,12 +36,12 @@ while result is not None:
         choices=[
                 {'name': 'Load Cell Calibration', 'value': 'loadcell_calibration'},
                 {'name': 'Manual Control', 'value': 'manual'},
-                {'name': 'Monotonic Test', 'value': 'monotonic'},
-                {'name': 'Cyclic Test', 'value': 'cyclic'},
-                {'name': 'Static Test', 'value': 'static'},
+                {'name': 'Monotonic Test', 'value': constants.MONOTONIC},
+                {'name': 'Cyclic Test', 'value': constants.CYCLIC},
+                {'name': 'Static Test', 'value': constants.STATIC},
                 {'name': 'Exit', 'value': None}
         ],
-        default='monotonic'
+        default=constants.MONOTONIC
     ).execute()
 
     if result == 'loadcell_calibration':
@@ -55,7 +55,7 @@ while result is not None:
             up_button_pin=17,
             down_button_pin=27
         )
-    elif result == 'monotonic' or result == 'cyclic':
+    elif result == constants.MONOTONIC or result == constants.CYCLIC:
         adjustment_position = float(inquirer.text(
             message='Specify the crossbar initial position [mm]:',
             default='50',
@@ -88,7 +88,7 @@ while result is not None:
                 test_dir=test_dir,
                 stop_button_pin=22
             )
-    elif result == 'static':
+    elif result == constants.STATIC:
         calibration.calibrate_loadcell(my_loadcell)
         
         helpers.start_manual_mode(
