@@ -83,6 +83,11 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
                                 increment_xlim = round((displacement_limit / initial_gauge_length) * 100)
                                 xlim = old_xlim + increment_xlim
                                 plot_item.getViewBox().setXRange(0, xlim)
+
+                            # Extend Y-axis
+                            if plot_data.getData()[1][-1] > plot_item.getViewBox().viewRange()[1][1]:
+                                ylim = round(plot_data.getData()[1][-1] * 1.1)
+                                plot_item.getViewBox().setYRange(0, ylim)
                         except:
                             pass
 
@@ -165,6 +170,11 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
                             if plot_data.getData()[0][-1] > plot_item.getViewBox().viewRange()[0][1]:
                                 xlim = round(plot_item.getViewBox().viewRange()[0][1] * 1.1)
                                 plot_item.getViewBox().setXRange(0, xlim)
+
+                            # Extend Y-axis
+                            if plot_data.getData()[1][-1] > plot_item.getViewBox().viewRange()[1][1]:
+                                ylim =  round(plot_data.getData()[1][-1] * 1.1)
+                                plot_item.getViewBox().setYRange(0, ylim)
                         except:
                             pass
                         
@@ -220,7 +230,7 @@ def _start_monotonic_test(my_controller: controller.LinearController, my_loadcel
     plot_item = plot_widget.getPlotItem()
 
     xlim = round((displacement / initial_gauge_length) * 1.1 * 100)  # 10% margin
-    ylim = loadcell_limit
+    ylim = loadcell_limit / 10
     plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
     plot_item.setLabel('bottom', 'Strain', '%')
     plot_item.setLabel('left', 'Force', 'N')
@@ -293,7 +303,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_color_idx = 0
 
     xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100)  # 10% margin
-    ylim = loadcell_limit
+    ylim = loadcell_limit / 10
     plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
     plot_item.setLabel('bottom', 'Strain', '%')
     plot_item.setLabel('left', 'Force', 'N')
