@@ -36,8 +36,11 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
 
     if stop_flag is False:
         initial_gauge_length = test_parameters['initial_gauge_length']['value']
-        cyclic_upper_limit = test_parameters['cyclic_upper_limit']['value']
         loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
+        try:
+            displacement_limit = test_parameters['cyclic_upper_limit']['value']
+        except:
+            displacement_limit = displacement
 
         stop_flag = stop_flag
 
@@ -74,10 +77,12 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
                             if (len(plot_data.getData()[0]) > 500):
                                 plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
                         
+                            # Extend X-axis
                             if plot_data.getData()[0][-1] > plot_item.getViewBox().viewRange()[0][1]:
                                 old_xlim = plot_item.getViewBox().viewRange()[0][1]
-                                xlim = round((cyclic_upper_limit / initial_gauge_length) * 100)
-                                plot_item.getViewBox().setXRange(0, old_xlim + xlim)
+                                increment_xlim = round((displacement_limit / initial_gauge_length) * 100)
+                                xlim = old_xlim + increment_xlim
+                                plot_item.getViewBox().setXRange(0, xlim)
                         except:
                             pass
 
@@ -152,8 +157,16 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
                     my_controller.release_torque()
                 else:
                     while my_loadcell.is_batch_ready(batch_index):
-                        if (plot_data.getData()[1] is not None) and (len(plot_data.getData()[1]) > 500):
-                            plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
+                        try:
+                            if len(plot_data.getData()[1]) > 500:
+                                plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
+
+                            # Extend X-axis
+                            if plot_data.getData()[0][-1] > plot_item.getViewBox().viewRange()[0][1]:
+                                xlim = round(plot_item.getViewBox().viewRange()[0][1] * 1.1)
+                                plot_item.getViewBox().setXRange(0, xlim)
+                        except:
+                            pass
                         
                         batch, batch_index = my_loadcell.get_batch(batch_index)
                         batch['t'] = batch['t'] - t0
