@@ -179,6 +179,34 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
 
     return data, stop_flag
 
+def _save_csv(data, test_parameters, test_dir):
+    extension = '.csv'
+    filename = test_parameters['test_id'] + extension
+    if data is not None:
+        if isinstance(data, list):
+            data = pd.concat(data, ignore_index=True)
+
+        data.to_csv(os.path.join(test_dir, filename), index=False)
+    
+    return
+
+def _save_xslx(data, data_labels, test_parameters, test_dir):
+    extension = '.xlsx'
+    filename = test_parameters['test_id'] + extension
+    if data is not None:
+        writer = pd.ExcelWriter(os.path.join(test_dir, filename))
+
+        if isinstance(data, list):
+            data_list = data
+            for idx, _ in enumerate(data_list):
+                data_list[idx].to_excel(writer, sheet_name=data_labels[idx], index=False)
+        else:
+            data.to_excel(writer, sheet_name=test_parameters['test_id'], index=False)
+
+        writer.save()
+
+    return
+
 def _start_monotonic_test(my_controller: controller.LinearController, my_loadcell: loadcell.LoadCell, test_parameters: dict, stop_button_pin: int):
     console.print('[#e5c07b]>[/#e5c07b]', 'Collecting data...')
     printed_lines = 1
@@ -616,29 +644,11 @@ def start_test(my_controller:controller.LinearController, my_loadcell:loadcell.L
     console.print('[#e5c07b]>[/#e5c07b]', 'Postprocessing test data...', '[green]:heavy_check_mark:[/green]')
 
     with console.status('Saving test data...'):
-        # Save .xlsx file
-        extension = '.xlsx'
-        filename = test_parameters['test_id'] + extension
-        if data is not None:
-            writer = pd.ExcelWriter(os.path.join(test_dir, filename))
-
-            if isinstance(data, list):
-                data_list = data
-                for idx, _ in enumerate(data_list):
-                    data_list[idx].to_excel(writer, sheet_name=data_labels[idx], index=False)
-            else:
-                data.to_excel(writer, sheet_name=test_parameters['test_id'], index=False)
-
-            writer.save()
-
         # Save complete .csv file
-        extension = '.csv'
-        filename = test_parameters['test_id'] + extension
-        if data is not None:
-            if isinstance(data, list):
-                data = pd.concat(data, ignore_index=True)
+        _save_csv(data, test_parameters, test_dir)
 
-            data.to_csv(os.path.join(test_dir, filename), index=False)
+        # Save .xlsx file
+        _save_xslx(data, data_labels, test_parameters, test_dir)
 
     console.print('[#e5c07b]>[/#e5c07b]', 'Saving test data...', '[green]:heavy_check_mark:[/green]')
 
