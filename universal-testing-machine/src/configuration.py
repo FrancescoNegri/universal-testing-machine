@@ -35,7 +35,7 @@ def _load_configuration(configurations_dir: str, configuration_name: str, test_t
     finally:
         return test_parameters
 
-def _read_cyclic_test_parameters():
+def _read_cyclic_test_parameters(is_configuration:bool):
     test_parameters = {}
 
     test_parameters['cross_section'] = {
@@ -48,170 +48,74 @@ def _read_cyclic_test_parameters():
         'unit': 'mm²'
     }
 
-    test_parameters['clamps_distance'] = {
-        'value': float(
+    if is_configuration is False:
+        test_parameters['clamps_distance'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the clamps distance [mm]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(constants.DEFAULT_CLAMPS_DISTANCE)
+                ).execute()
+            ),
+            'unit': 'mm'
+        }
+
+        test_parameters['cycles_number'] = float(
             inquirer.text(
-                message='Insert the clamps distance [mm]:',
-                validate=validator.NumberValidator(float_allowed=True),
-                default=str(constants.DEFAULT_CLAMPS_DISTANCE)
+                message='Insert the number of cycles to execute:',
+                validate=validator.NumberValidator(float_allowed=False)
             ).execute()
-        ),
-        'unit': 'mm'
-    }
+        )
 
-    test_parameters['cycles_number'] = float(
-        inquirer.text(
-            message='Insert the number of cycles to execute:',
-            validate=validator.NumberValidator(float_allowed=False)
-        ).execute()
-    )
+        # CYCLIC PHASE PARAMETERS
+        cyclic_phase_parameters = {}
 
-    # CYCLIC PHASE PARAMETERS
-    cyclic_phase_parameters = {}
+        cyclic_phase_parameters['cyclic_upper_limit'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the cycle upper limit as a displacement with respect to the current position [mm]:',
+                    validate=validator.NumberValidator(float_allowed=True)
+                ).execute()
+            ),
+            'unit': 'mm'
+        }
 
-    cyclic_phase_parameters['cyclic_upper_limit'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the cycle upper limit as a displacement with respect to the current position [mm]:',
-                validate=validator.NumberValidator(float_allowed=True)
-            ).execute()
-        ),
-        'unit': 'mm'
-    }
+        cyclic_phase_parameters['cyclic_lower_limit'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the cycle lower limit as a displacement with respect to the current position [mm]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(0)
+                ).execute()
+            ),
+            'unit': 'mm'
+        }
 
-    cyclic_phase_parameters['cyclic_lower_limit'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the cycle lower limit as a displacement with respect to the current position [mm]:',
-                validate=validator.NumberValidator(float_allowed=True),
-                default=str(0)
-            ).execute()
-        ),
-        'unit': 'mm'
-    }
-
-    cyclic_phase_parameters['cyclic_speed'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the speed to employ during each load cycle [mm/s]:',
-                validate=validator.NumberValidator(float_allowed=True)
-            ).execute()
-        ),
-        'unit': 'mm/s'
-    }
-
-    cyclic_phase_parameters['cyclic_return_speed'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the speed to employ during each unload cycle [mm/s]:',
-                validate=validator.NumberValidator(float_allowed=True),
-                default=str(cyclic_phase_parameters['cyclic_speed']['value'])
-            ).execute()
-        ),
-        'unit': 'mm/s'
-    }
-
-    cyclic_phase_parameters['cyclic_delay'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the delay before starting a new load cycle [s]:',
-                validate=validator.NumberValidator(float_allowed=True),
-                default=str(0)
-            ).execute()
-        ),
-        'unit': 's'
-    }
-
-    cyclic_phase_parameters['cyclic_return_delay'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the delay before unloading the specimen [s]:',
-                validate=validator.NumberValidator(float_allowed=True),
-                default=str(0)
-            ).execute()
-        ),
-        'unit': 's'
-    }
-
-    test_parameters = {**test_parameters, **cyclic_phase_parameters}
-
-    # PRETENSIONING PHASE PARAMETERS
-    pretensioning_phase_parameters = {}
-
-    pretensioning_phase_parameters['is_pretensioning_set'] = inquirer.confirm(
-        message='Do you want to perform a pretensioning cycle?'
-    ).execute()
-
-    if pretensioning_phase_parameters['is_pretensioning_set'] is True:
-        pretensioning_phase_parameters['pretensioning_speed'] = {
+        cyclic_phase_parameters['cyclic_speed'] = {
             'value': float(
                 inquirer.text(
                     message='Insert the speed to employ during each load cycle [mm/s]:',
-                    validate=validator.NumberValidator(float_allowed=True),
-                    default=str(cyclic_phase_parameters['cyclic_speed']['value'])
+                    validate=validator.NumberValidator(float_allowed=True)
                 ).execute()
             ),
             'unit': 'mm/s'
         }
 
-        pretensioning_phase_parameters['pretensioning_return_speed'] = {
+        cyclic_phase_parameters['cyclic_return_speed'] = {
             'value': float(
                 inquirer.text(
                     message='Insert the speed to employ during each unload cycle [mm/s]:',
                     validate=validator.NumberValidator(float_allowed=True),
-                    default=str(cyclic_phase_parameters['cyclic_return_speed']['value'])
-                ).execute()
-            ),
-            'unit': 'mm/s'
-        }
-
-        pretensioning_phase_parameters['pretensioning_return_delay'] = {
-            'value': float(
-                inquirer.text(
-                    message='Insert the delay before unloading the specimen during the pretensioning [s]:',
-                    validate=validator.NumberValidator(float_allowed=True),
-                    default=str(cyclic_phase_parameters['cyclic_return_delay']['value'])
-                ).execute()
-            ),
-            'unit': 's'
-        }
-
-        pretensioning_phase_parameters['pretensioning_after_delay'] = {
-            'value': float(
-                inquirer.text(
-                    message='Insert the delay before starting the cyclic phase [s]:',
-                    validate=validator.NumberValidator(float_allowed=True),
-                    default=str(0)
-                ).execute()
-            ),
-            'unit': 's'
-        }
-
-    test_parameters = {**test_parameters, **pretensioning_phase_parameters}
-
-    # FAILURE PHASE PARAMETERS
-    failure_phase_parameters = {}
-
-    failure_phase_parameters['is_failure_set'] = inquirer.confirm(
-        message='Do you want the test to finish by reaching specimen failure?'
-    ).execute()
-
-    if failure_phase_parameters['is_failure_set'] is True:
-        failure_phase_parameters['failure_speed'] = {
-            'value': float(
-                inquirer.text(
-                    message='Insert the speed to employ while reaching failure [mm/s]:',
-                    validate=validator.NumberValidator(float_allowed=True),
                     default=str(cyclic_phase_parameters['cyclic_speed']['value'])
                 ).execute()
             ),
             'unit': 'mm/s'
         }
 
-        failure_phase_parameters['failure_before_delay'] = {
+        cyclic_phase_parameters['cyclic_delay'] = {
             'value': float(
                 inquirer.text(
-                    message='Insert the delay before starting the failure phase [s]:',
+                    message='Insert the delay before starting a new load cycle [s]:',
                     validate=validator.NumberValidator(float_allowed=True),
                     default=str(0)
                 ).execute()
@@ -219,11 +123,108 @@ def _read_cyclic_test_parameters():
             'unit': 's'
         }
 
-    test_parameters = {**test_parameters, **failure_phase_parameters}
+        cyclic_phase_parameters['cyclic_return_delay'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the delay before unloading the specimen [s]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(0)
+                ).execute()
+            ),
+            'unit': 's'
+        }
+
+        test_parameters = {**test_parameters, **cyclic_phase_parameters}
+
+        # PRETENSIONING PHASE PARAMETERS
+        pretensioning_phase_parameters = {}
+
+        pretensioning_phase_parameters['is_pretensioning_set'] = inquirer.confirm(
+            message='Do you want to perform a pretensioning cycle?'
+        ).execute()
+
+        if pretensioning_phase_parameters['is_pretensioning_set'] is True:
+            pretensioning_phase_parameters['pretensioning_speed'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the speed to employ during each load cycle [mm/s]:',
+                        validate=validator.NumberValidator(float_allowed=True),
+                        default=str(cyclic_phase_parameters['cyclic_speed']['value'])
+                    ).execute()
+                ),
+                'unit': 'mm/s'
+            }
+
+            pretensioning_phase_parameters['pretensioning_return_speed'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the speed to employ during each unload cycle [mm/s]:',
+                        validate=validator.NumberValidator(float_allowed=True),
+                        default=str(cyclic_phase_parameters['cyclic_return_speed']['value'])
+                    ).execute()
+                ),
+                'unit': 'mm/s'
+            }
+
+            pretensioning_phase_parameters['pretensioning_return_delay'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the delay before unloading the specimen during the pretensioning [s]:',
+                        validate=validator.NumberValidator(float_allowed=True),
+                        default=str(cyclic_phase_parameters['cyclic_return_delay']['value'])
+                    ).execute()
+                ),
+                'unit': 's'
+            }
+
+            pretensioning_phase_parameters['pretensioning_after_delay'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the delay before starting the cyclic phase [s]:',
+                        validate=validator.NumberValidator(float_allowed=True),
+                        default=str(0)
+                    ).execute()
+                ),
+                'unit': 's'
+            }
+
+        test_parameters = {**test_parameters, **pretensioning_phase_parameters}
+
+        # FAILURE PHASE PARAMETERS
+        failure_phase_parameters = {}
+
+        failure_phase_parameters['is_failure_set'] = inquirer.confirm(
+            message='Do you want the test to finish by reaching specimen failure?'
+        ).execute()
+
+        if failure_phase_parameters['is_failure_set'] is True:
+            failure_phase_parameters['failure_speed'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the speed to employ while reaching failure [mm/s]:',
+                        validate=validator.NumberValidator(float_allowed=True),
+                        default=str(cyclic_phase_parameters['cyclic_speed']['value'])
+                    ).execute()
+                ),
+                'unit': 'mm/s'
+            }
+
+            failure_phase_parameters['failure_before_delay'] = {
+                'value': float(
+                    inquirer.text(
+                        message='Insert the delay before starting the failure phase [s]:',
+                        validate=validator.NumberValidator(float_allowed=True),
+                        default=str(0)
+                    ).execute()
+                ),
+                'unit': 's'
+            }
+
+        test_parameters = {**test_parameters, **failure_phase_parameters}
 
     return test_parameters
 
-def _read_monotonic_test_parameters():
+def _read_monotonic_test_parameters(is_configuration:bool):
     test_parameters = {}
 
     test_parameters['cross_section'] = {
@@ -236,40 +237,41 @@ def _read_monotonic_test_parameters():
         'unit': 'mm²'
     }
 
-    test_parameters['clamps_distance'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the clamps distance [mm]:',
-                validate=validator.NumberValidator(float_allowed=True),
-                default=str(constants.DEFAULT_CLAMPS_DISTANCE)
-            ).execute()
-        ),
-        'unit': 'mm'
-    }
+    if is_configuration is False:
+        test_parameters['clamps_distance'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the clamps distance [mm]:',
+                    validate=validator.NumberValidator(float_allowed=True),
+                    default=str(constants.DEFAULT_CLAMPS_DISTANCE)
+                ).execute()
+            ),
+            'unit': 'mm'
+        }
 
-    test_parameters['displacement'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the desired displacement [mm]:',
-                validate=validator.NumberValidator(float_allowed=True)
-            ).execute()
-        ),
-        'unit': 'mm'
-    }
+        test_parameters['displacement'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the desired displacement [mm]:',
+                    validate=validator.NumberValidator(float_allowed=True)
+                ).execute()
+            ),
+            'unit': 'mm'
+        }
 
-    test_parameters['linear_speed'] = {
-        'value': float(
-            inquirer.text(
-                message='Insert the desired linear speed [mm/s]:',
-                validate=validator.NumberValidator(float_allowed=True)
-            ).execute()
-        ),
-        'unit': 'mm/s'
-    }
+        test_parameters['linear_speed'] = {
+            'value': float(
+                inquirer.text(
+                    message='Insert the desired linear speed [mm/s]:',
+                    validate=validator.NumberValidator(float_allowed=True)
+                ).execute()
+            ),
+            'unit': 'mm/s'
+        }
 
     return test_parameters
 
-def _read_test_parameters(test_type: bool):
+def _read_test_parameters(test_type: bool, is_configuration:bool = False):
     timestamp = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
     test_parameters = {
         'test_id': timestamp,
@@ -278,13 +280,21 @@ def _read_test_parameters(test_type: bool):
     }
 
     if test_type == constants.MONOTONIC:
-        monotonic_test_parameters = _read_monotonic_test_parameters()
+        monotonic_test_parameters = _read_monotonic_test_parameters(is_configuration)
         test_parameters = {**test_parameters, **monotonic_test_parameters}
     elif test_type == constants.CYCLIC:
-        cyclic_test_parameters = _read_cyclic_test_parameters()
+        cyclic_test_parameters = _read_cyclic_test_parameters(is_configuration)
         test_parameters = {**test_parameters, **cyclic_test_parameters}
     elif test_type == constants.STATIC:
         pass
+
+    test_parameters['test_id'] = inquirer.text(
+        message='Insert the ID for this session:',
+        validate=validator.EmptyInputValidator(),
+        transformer=lambda result: ' '.join(result.split()).replace(' ', '_'),
+        filter=lambda result: ' '.join(result.split()).replace(' ', '_'),
+        default=test_parameters['date']
+    ).execute()
 
     return test_parameters
 
@@ -293,8 +303,6 @@ def _save_configuration(configurations_dir: str, test_parameters: dict):
         message='Insert a name for this configuration:',
         default=test_parameters['test_id']
     ).execute()
-
-    test_parameters.pop('test_id', None)
 
     extension = '.json'
 
@@ -316,8 +324,16 @@ def _save_configuration(configurations_dir: str, test_parameters: dict):
 
     filename = filename + extension
 
+    test_id = test_parameters['test_id']
+    cross_section = test_parameters['cross_section']
+    test_parameters.pop('test_id', None)
+    test_parameters.pop('cross_section', None)
+
     with open(os.path.join(configurations_dir, filename), 'w') as f:
         json.dump(test_parameters, f)
+
+    test_parameters['test_id'] = test_id
+    test_parameters['cross_section'] = cross_section
 
     return
 
@@ -351,14 +367,8 @@ def set_test_parameters(test_type: bool):
                 test_parameters = _load_configuration(configurations_dir, configuration_name=result, test_type=test_type)
                 if test_parameters is not None:
                     test_parameters['date'] = datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
-
-        test_parameters['test_id'] = inquirer.text(
-            message='Insert the ID for this session:',
-            validate=validator.EmptyInputValidator(),
-            transformer=lambda result: ' '.join(result.split()).replace(' ', '_'),
-            filter=lambda result: ' '.join(result.split()).replace(' ', '_'),
-            default=test_parameters['date']
-        ).execute()
+                    extra_test_parameters = _read_test_parameters(test_type, is_configuration=True)
+                    test_parameters = {**test_parameters, **extra_test_parameters}
 
         is_confirmed = inquirer.confirm(
             message='Confirm?'
