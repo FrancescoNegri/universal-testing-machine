@@ -294,8 +294,6 @@ def _save_configuration(configurations_dir: str, test_parameters: dict):
         default=test_parameters['test_id']
     ).execute()
 
-    test_parameters.pop('test_id', None)
-
     extension = '.json'
 
     if os.path.isfile(os.path.join(configurations_dir, filename + extension)):
@@ -316,8 +314,14 @@ def _save_configuration(configurations_dir: str, test_parameters: dict):
 
     filename = filename + extension
 
+    test_parameters.pop('test_id', None)
+    cross_section = test_parameters['cross_section']
+    test_parameters.pop('cross_section', None)
+
     with open(os.path.join(configurations_dir, filename), 'w') as f:
         json.dump(test_parameters, f)
+
+    test_parameters['cross_section'] = cross_section
 
     return
 
