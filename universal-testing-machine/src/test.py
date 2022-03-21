@@ -37,6 +37,10 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
     if stop_flag is False:
         initial_gauge_length = test_parameters['initial_gauge_length']['value']
         loadcell_limit = my_loadcell.get_calibration()['loadcell_limit']['value']
+        try:
+            displacement_limit = test_parameters['cyclic_upper_limit']['value']
+        except:
+            displacement_limit = displacement
 
         stop_flag = stop_flag
 
@@ -69,8 +73,23 @@ def _run_go(my_controller:controller.LinearController, my_loadcell:loadcell.Load
                     my_controller.abort()
                 else:
                     while my_loadcell.is_batch_ready(batch_index):
-                        if (plot_data.getData()[1] is not None) and (len(plot_data.getData()[1]) > 500):
-                            plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
+                        try:
+                            if (len(plot_data.getData()[0]) > 500):
+                                plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
+                        
+                            # Extend X-axis
+                            if plot_data.getData()[0][-1] > plot_item.getViewBox().viewRange()[0][1]:
+                                old_xlim = plot_item.getViewBox().viewRange()[0][1]
+                                increment_xlim = round((displacement_limit / initial_gauge_length) * 100)
+                                xlim = old_xlim + increment_xlim
+                                plot_item.getViewBox().setXRange(0, xlim)
+
+                            # Extend Y-axis
+                            if plot_data.getData()[1][-1] > plot_item.getViewBox().viewRange()[1][1]:
+                                ylim = round(plot_data.getData()[1][-1] * 1.1)
+                                plot_item.getViewBox().setYRange(0, ylim)
+                        except:
+                            pass
 
                         batch, batch_index = my_loadcell.get_batch(batch_index)
                         batch['t'] = batch['t'] - t0
@@ -143,8 +162,21 @@ def _run_delay(my_controller:controller.LinearController, my_loadcell:loadcell.L
                     my_controller.release_torque()
                 else:
                     while my_loadcell.is_batch_ready(batch_index):
-                        if (plot_data.getData()[1] is not None) and (len(plot_data.getData()[1]) > 500):
-                            plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
+                        try:
+                            if len(plot_data.getData()[1]) > 500:
+                                plot_data, forces, strains = _init_plot_data(plot_item, plot_color)
+
+                            # Extend X-axis
+                            if plot_data.getData()[0][-1] > plot_item.getViewBox().viewRange()[0][1]:
+                                xlim = round(plot_item.getViewBox().viewRange()[0][1] * 1.1)
+                                plot_item.getViewBox().setXRange(0, xlim)
+
+                            # Extend Y-axis
+                            if plot_data.getData()[1][-1] > plot_item.getViewBox().viewRange()[1][1]:
+                                ylim =  round(plot_data.getData()[1][-1] * 1.1)
+                                plot_item.getViewBox().setYRange(0, ylim)
+                        except:
+                            pass
                         
                         batch, batch_index = my_loadcell.get_batch(batch_index)
                         batch['t'] = batch['t'] - t0
@@ -226,7 +258,7 @@ def _start_monotonic_test(my_controller: controller.LinearController, my_loadcel
     plot_item = plot_widget.getPlotItem()
 
     xlim = round((displacement / initial_gauge_length) * 1.1 * 100)  # 10% margin
-    ylim = loadcell_limit
+    ylim = loadcell_limit / 10
     plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
     plot_item.setLabel('bottom', 'Strain', '%')
     plot_item.setLabel('left', 'Force', 'N')
@@ -299,7 +331,7 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
     plot_color_idx = 0
 
     xlim = round((cyclic_upper_limit / initial_gauge_length) * 1.1 * 100)  # 10% margin
-    ylim = loadcell_limit
+    ylim = loadcell_limit / 10
     plot_item.getViewBox().setRange(xRange=(0, xlim), yRange=(0, ylim))
     plot_item.setLabel('bottom', 'Strain', '%')
     plot_item.setLabel('left', 'Force', 'N')
@@ -469,8 +501,6 @@ def _start_cyclic_test(my_controller:controller.LinearController, my_loadcell:lo
 
     # FAILURE PHASE
     if is_failure_set:
-        plot_item.getViewBox().enableAutoRange(axis='x')
-
         # FAILURE PHASE - BEFORE DELAY
         plot_color_idx += 1
         data, stop_flag = _run_delay(
